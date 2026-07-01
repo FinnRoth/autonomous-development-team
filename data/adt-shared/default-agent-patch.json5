@@ -1,0 +1,10 @@
+// Make project-lead the default agent (the user's front door).
+// 'main' loses default status; the team's 7 agents are the only working agents.
+{
+  agents: {
+    list: [
+      { id: 'main', default: false },
+      { id: 'project-lead', default: true },
+    ],
+  },
+}
