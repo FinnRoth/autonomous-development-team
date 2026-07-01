@@ -1,0 +1,25 @@
+services:
+  openclaw:
+    build: .
+    container_name: adt-test-1-02
+    restart: unless-stopped
+
+    ports:
+      - "18789:18789"
+
+    volumes:
+      - ./data:/home/node/.openclaw
+
+    environment:
+      OPENCLAW_GATEWAY_PASSWORD: crazymfyo
+      LITELLM_API_KEY: "573f2a99-b8c0-40c3-886b-60ecc68823b9"
+      # ----- ADT integrations -----
+      # Figma personal access token (used by uiux + frontend). Generate at https://www.figma.com/developers/api#access-tokens
+      FIGMA_TOKEN: "REPLACE_ME_FIGMA_PAT"
+      # Git host: optional `gh` (GitHub) / `glab` (GitLab) / `tea` (Gitea) auth token. Reviewer/Backend/Frontend/QA all share this.
+      GIT_HOST_TOKEN: "REPLACE_ME_GIT_TOKEN"
+      # Git host CLI to use: one of "gh", "glab", "tea". Defaults to "gh".
+      GIT_HOST_CLI: "gh"
+
+volumes:
+  data:
