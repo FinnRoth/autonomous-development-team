@@ -119,12 +119,14 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
   1. Pull `docs/` repo.
   2. Read `docs/board.md`.
   3. For each `in_progress` Task whose `last_updated > 24 cycles ago`: send a `question` to its owner asking for status.
-  4. For each `blocked` ticket: confirm the blocker is being addressed; if blocker is a user decision, ensure an open escalation exists.
+  4. For each `blocked` ticket: confirm the blocker is being addressed; if blocker is a user decision, ensure an open escalation exists. **Dispatch ALL other unblocked ready tasks immediately — do not let one blocked ticket stall the rest of the board.**
   5. Scan `inbox/` in arrival order. For each:
      - `handoff` from architect → may trigger return to REVIEW_WITH_ARCHITECT outcome handling.
+     - `handoff` from reviewer (post-merge) → verify QA has received a handoff for the merged Story; if not, send QA a `handoff` now.
      - `handoff` from qa (bug report) → run `triage-bug` skill → may create a `BUG-*.md` ticket → may trigger REPLAN.
      - `question` to me → reply with a `handoff` (decision) within 1 cycle if I can, else `escalate-to-user`.
      - `escalation` to me → if within my authority, decide and reply; else `escalate-to-user`.
+     - **Any technical problem surfaced** (auth, build, env, contract) → delegate via `handoff` to the correct technical agent. Never attempt to solve it myself.
   6. If 7 days since last weekly summary, run `weekly-status` skill.
   7. Archive processed inbox messages to `inbox/processed/`.
 - **Output artifacts:** nudges (outbound `question`), possible new `BUG-*.md`, updated `risk-register.md`, possible `weekly-status` to user.

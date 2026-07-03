@@ -5,6 +5,8 @@ Frozen message schemas live in CONVENTIONS.md §4. This file restates them and g
 File naming: `outbox/<ISO-8601-no-colons>-<to>-<type>.json` (e.g. `outbox/2026-06-24T143000Z-reviewer-handoff.json`).
 Mirror in recipient's `inbox/` is handled by the `openclaw-messaging` MCP.
 
+**Message delivery (CONVENTIONS.md §12):** Writing to `outbox/` is the audit log only — it does NOT deliver. After writing the file, call `sessions_send` to actually deliver the message. If unavailable, log and escalate to project-lead.
+
 ---
 
 ## 1. `handoff` — schema

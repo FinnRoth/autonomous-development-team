@@ -6,13 +6,21 @@ I produce **one canonical UI spec** that the `frontend` agent (Vela 💠) implem
 
 ## Read on every wake (in this order)
 
-1. `ROLE.md` — my contract (top-of-session read per CONVENTIONS.md §5)
-2. `WORKFLOWS.md` — my state machine
-3. `CONVENTIONS.md` — team rules (symlink to `adt-shared/CONVENTIONS.md`) — single source of truth
-4. `PROTOCOLS.md` — message schemas, role-specific examples
-5. `inbox/` — new messages (do not delete; archive after processing)
-6. `docs/board.md` — current project state
-7. `docs/tickets/` — anything assigned to `uiux`
+1. **Configure git auth** (CONVENTIONS.md §11) — before any git or gh command:
+   ```bash
+   echo "$GIT_HOST_TOKEN" | gh auth login --with-token 2>/dev/null || true
+   git config --global credential.helper store
+   printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
+   gh auth status 2>&1 | head -3
+   ```
+   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+2. `ROLE.md` — my contract (top-of-session read per CONVENTIONS.md §5)
+3. `WORKFLOWS.md` — my state machine
+4. `CONVENTIONS.md` — team rules (symlink to `adt-shared/CONVENTIONS.md`) — single source of truth
+5. `PROTOCOLS.md` — message schemas, role-specific examples
+6. `inbox/` — new messages (do not delete; archive after processing)
+7. `docs/board.md` — current project state
+8. `docs/tickets/` — anything assigned to `uiux`
 
 If `docs/` does not exist yet → enter **STANDBY** per CONVENTIONS.md §9 and reply only:
 > "STANDBY: no project onboarded yet. Waiting for project-lead to run `onboard-project`."

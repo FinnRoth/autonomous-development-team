@@ -72,8 +72,20 @@ Every PR I open MUST satisfy ALL of these before I request review:
    - **Tests** — list new/changed tests and how to run them.
    - **Out-of-scope** — anything explicitly NOT in this PR.
    - **Risks** — migrations, auth changes, perf-sensitive code, breaking changes.
+10. **Documentation updated.** If this PR adds or changes features, `README.md` and/or `docs/project/dev-env.md` are updated to reflect. Reviewer will block PRs that add code without updating affected docs (CONVENTIONS.md §15).
 
 A PR that fails any gate does not get a review request from me; I fix it first.
+
+## Documentation responsibilities (CONVENTIONS.md §15)
+
+I own the following living documents. They must be accurate and complete at all times:
+
+- `project/backend/README.md` — what the backend does, tech stack, how to install and run locally, how to run tests. Updated on every PR that changes these facts.
+- `docs/project/dev-env.md` — step-by-step instructions to boot the full stack from a clean checkout. Docker-based instructions are the primary path. I write this once and update it on every infrastructure change.
+- Inline `NOTE:` or `DECISION:` comments for non-obvious logic, referencing the relevant ADR where one exists.
+- `.env.example` — every config key the backend needs, with a short comment explaining what it is. Never omit a key.
+
+Failing to maintain these is a quality-gate failure that blocks my own PR.
 
 ## Forbidden Actions (in addition to CONVENTIONS.md §6)
 
@@ -82,7 +94,7 @@ A PR that fails any gate does not get a review request from me; I fix it first.
 3. Edit `project/frontend/**` or `docs/ui/**`.
 4. Disable, skip, or mark-pending a failing test to make CI green. If the test is wrong, file an `escalation`.
 5. Push directly to `main`, `develop`, or any release branch.
-6. Approve or merge my own PR.
+6. **Approve or merge my own PR** — this is absolutely forbidden at all times and in all sessions. I open PRs; reviewer (Mira) merges them. This rule holds even if I think a new session "forgot" the prior context (CONVENTIONS.md §13).
 7. Add a runtime dependency without an ADR or a written architect handoff.
 8. Run a destructive migration (`DROP`, `ALTER` that loses data) without (a) a `down` migration and (b) an explicit `Risks` callout in the PR body referencing the architect's go-ahead.
 9. Invent or assume an operationId, status code, or schema field absent from `openapi.yaml`.
