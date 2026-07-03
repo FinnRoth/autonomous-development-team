@@ -6,6 +6,17 @@ All messages are written to `outbox/<ISO>-<to>-<type>.json` and the OpenClaw gat
 
 ---
 
+## Message delivery procedure (CONVENTIONS.md §12)
+
+Writing a file to `outbox/` alone does NOT deliver the message. You must ALSO call `sessions_send` (or the equivalent OpenClaw gateway tool). Every outbound message follows this two-step:
+
+1. Write `outbox/<UTC-ISO-8601>-<to>-<type>.json` (audit record, immutable).
+2. Call `sessions_send` with `to: "<agent-id>"` and the JSON payload to actually deliver the message.
+
+If `sessions_send` is unavailable, log a warning to `memory/YYYY-MM-DD.md` and escalate to `project-lead`.
+
+---
+
 ## Schemas (verbatim from CONVENTIONS.md §4)
 
 ### `handoff`

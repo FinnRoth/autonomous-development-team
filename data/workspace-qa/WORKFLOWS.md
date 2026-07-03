@@ -18,7 +18,7 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 ## 1. IDLE
 **Entry condition:** session wake, no in-flight Story, inbox processed.
 **Exit condition:**
-- A new `handoff` from project-lead or reviewer naming a Story → go to **INTAKE**.
+- A new `handoff` from project-lead, reviewer, backend, or frontend naming a Story → go to **INTAKE**.
 - A new `handoff` from backend/frontend with `re: BUG-NN, fix ready` → go to **REGRESS**.
 - A new `question` answer or `handoff` resolving a block — lookup `memory/state.md` by `question_id` (matching `blocked_on`). Resume the row's state. If no row matches, log a warning to `memory/YYYY-MM-DD.md` and stay IDLE.
 - Heartbeat with nothing new → stay IDLE, log `HEARTBEAT_OK`.
@@ -26,8 +26,12 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 **Actions:**
 1. `git pull` `docs/` and `project/`.
 2. Scan inbox, classify each message (handoff / question / escalation / answer).
-3. Scan `docs/board.md` for Stories in `qa` column that have no `docs/qa/cases/<story-id>.md` yet — these are missed intakes; treat as a fresh handoff.
+3. **Proactive board scan:** open `docs/board.md` and find:
+   - Stories in the `qa` column that have no `docs/qa/cases/<story-id>.md` yet — treat as a fresh handoff, go to INTAKE.
+   - Stories with `status: qa` where a PR was merged (check `docs/reviews/review-log.md`) but I have no record of starting testing — treat as a missed intake.
+   - Stories in `in_review` that have no open QA activity — stand by; do not start testing until reviewer merges.
 4. Reminder pass: for each `status: open` bug older than 24h, send a polite reminder handoff to suspected_owner (CC project-lead).
+5. **Environment health check:** confirm the dev environment is reachable. If `docs/project/dev-env.md` exists, follow the instructions to boot the stack (Docker preferred). If the environment is down, file `escalation` to project-lead (severity `high`).
 
 **Output artifacts:** updated `memory/YYYY-MM-DD.md` log line.
 **On error:** if git pull fails, retry once; if still fails, file `escalation` (severity `med`) to project-lead and stay IDLE.
@@ -36,16 +40,20 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 
 ## 2. INTAKE
 **Entry condition:** a Story is assigned to me (handoff received OR found in board's qa column).
-**Exit condition:** `docs/qa/cases/<story-id>.md` skeleton exists, ticket parsed, acceptance criteria copied verbatim.
+**Exit condition:** `docs/qa/cases/<story-id>.md` skeleton exists, ticket parsed, acceptance criteria copied verbatim, environment verified, contract compatibility confirmed.
 
 **Actions:**
 1. Run skill `intake-story` (see `skills/intake-story/SKILL.md`).
 2. Read `docs/tickets/<story-id>.md` — copy `acceptance:` block verbatim. Never paraphrase.
 3. Read related artifacts: linked ADR(s), `docs/ui/ui-spec.md` flows referenced, `docs/architecture/openapi.yaml` endpoints used.
 4. Read `docs/reviews/<PR-ID>.md` if a PR is linked — note any concerns reviewer raised.
-5. Confirm the build under test is current: `git pull` `project/`, verify the running app responds at the dev URLs.
-6. Create `docs/qa/cases/<story-id>.md` skeleton with sections: Acceptance Criteria, Happy Path Cases, Edge Cases, Negative Cases, Cross-Cutting Cases, Exploratory Log, Linked Bugs, Automation Status.
-7. Update `docs/qa/coverage-matrix.md`: add row for this Story with status `intake`.
+5. **Verify contract compatibility (CONVENTIONS.md §14):**
+   - Check that `project/.architecture/contracts/` exists and was generated from the current `openapi.yaml` (compare version field).
+   - Run at least one API call from the frontend's generated client type definitions against the running backend. If the response shape doesn't match the generated types, file a `question` to the architect immediately: "Contract mismatch detected: frontend types and backend responses diverge on <endpoint>." → transition to **BLOCKED** for this story until resolved.
+6. Boot the full stack (see §Full-stack E2E environment requirement in ROLE.md). Confirm backend health endpoint and frontend are reachable.
+7. Confirm the build under test is current: `git pull` `project/`, verify the running app responds at the dev URLs.
+8. Create `docs/qa/cases/<story-id>.md` skeleton with sections: Acceptance Criteria, Happy Path Cases, Edge Cases, Negative Cases, Cross-Cutting Cases, Exploratory Log, Linked Bugs, Automation Status.
+9. Update `docs/qa/coverage-matrix.md`: add row for this Story with status `intake`.
 
 **Output artifacts:**
 - `docs/qa/cases/<story-id>.md` (skeleton)
@@ -54,6 +62,7 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 **On error:**
 - Ticket missing or acceptance block empty → `question` to project-lead; transition to **BLOCKED**.
 - Linked PR not actually merged → `question` to reviewer; stay in INTAKE.
+- Contract mismatch → `question` to architect; transition to **BLOCKED** until contracts are fixed.
 
 ---
 

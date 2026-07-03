@@ -136,19 +136,28 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 ## 8. ADDRESS_REVIEW
 
 - **Entry condition:** PR is open, reviewer assigned.
-- **Exit condition:** reviewer verdict is `approve` AND CI is green → move to `MERGED` (reviewer or project-lead performs the merge; I do NOT self-merge).
+- **Exit condition:** reviewer verdict is `approve` AND CI is green → move to `MERGED` (reviewer performs the merge; I do NOT self-merge per CONVENTIONS.md §13).
 - **Actions:** loop:
-  1. Watch `inbox/` and PR thread for reviewer comments.
-  2. On `request_changes`: run skill `address-review-comments`:
-     - Parse each comment, plan a response per thread.
-     - Apply code changes, push.
-     - Reply "addressed in <SHA>" on each thread.
-  3. On `question` from reviewer → answer in thread; if it's a contract question, route to architect with a `question`.
-  4. On `approve`: stop loop, mark internal state as approved, wait for merge.
+  1. Watch `inbox/` and the PR thread (via `gh pr view <num> --comments`) for reviewer comments.
+  2. **When reviewer posts a review (REQUEST_CHANGES or comments):**
+     - Read **every** inline comment and the summary. Do not skip any.
+     - Classify each item:
+       - `[Required]` — MUST fix before re-requesting review. No exceptions.
+       - `[Suggested]` — fix if it makes the code better in the current context; if not, reply explaining why it doesn't apply here (a justified decline is acceptable; silence is not).
+       - `[Nit]` — fix or decline with a one-line reply; your call.
+     - Run skill `address-review-comments`:
+       1. Apply code changes for all Required items.
+       2. Apply or consciously decline Suggested and Nit items; leave a reply on each declined item.
+       3. Push all changes as one or more follow-up commits with `[<ID>] address review: <brief>` messages.
+       4. Reply "addressed in <SHA>" on every Required thread. Reply to every Suggested/Nit thread with either the fix SHA or a brief rationale for decline.
+     - After all threads are resolved, re-request review: `gh pr review --request-changes --body ""` followed by `gh pr request-review --reviewer <reviewer-agent-id>` (or equivalent for the git host).
+  3. On `question` from reviewer → answer in PR thread; if it's a contract question, route to architect with a `question`.
+  4. On `approve`: stop loop, mark internal state as approved, **do not merge**. Wait for reviewer to perform the merge.
 - **Output artifacts:** follow-up commits, PR thread replies, optional question/escalation messages.
 - **On-error:**
-  - Reviewer asks for something that contradicts the ADR → file `escalation` to project-lead.
-  - Reviewer and I disagree after one back-and-forth → `escalation` to project-lead.
+  - Reviewer asks for something that contradicts the ADR → file `escalation` to project-lead, citing both the reviewer comment and the ADR section.
+  - Reviewer and I disagree after one back-and-forth → `escalation` to project-lead. I do NOT unilaterally override review comments.
+  - CI fails on my fix push → fix CI before re-requesting review. Never re-request review with red CI.
 
 ---
 

@@ -1,10 +1,34 @@
 // Make project-lead the default agent (the user's front door).
 // 'main' loses default status; the team's 7 agents are the only working agents.
+// Also enables agent-to-agent messaging so handoffs are actually delivered via
+// the sessions_send tool, not just written to outbox files.
 {
   agents: {
     list: [
       { id: 'main', default: false },
       { id: 'project-lead', default: true },
     ],
+  },
+
+  // ── Agent-to-agent messaging ──────────────────────────────────────────────
+  // Required so that agents can reach each other via sessions_send.
+  // Without this, messages only exist as outbox JSON files and are never delivered.
+  tools: {
+    sessions: {
+      visibility: 'all',   // every agent can see all other agent sessions
+    },
+    agentToAgent: {
+      enabled: true,
+      allow: ['*'],        // any agent may message any other agent
+    },
+  },
+
+  // ── Subagent trust ────────────────────────────────────────────────────────
+  // Allows every agent to delegate work to any other agent as a subagent.
+  // The 'agents.*' glob applies the setting to every agent in the team.
+  'agents.*': {
+    subagents: {
+      allowAgents: ['*'],
+    },
   },
 }
