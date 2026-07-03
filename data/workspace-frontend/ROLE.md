@@ -122,6 +122,18 @@ In addition to CONVENTIONS.md §7:
 9. **Component provenance** — every component I imported is listed in `docs/ui/components.md`; net-new components have a matching prior `handoff` from uiux (uiux updates `components.md` before I introduce a component).
 10. **Generated client untouched** — `git diff` on `project/.architecture/contracts/` is empty in my PR.
 11. PR description contains the **verbatim Acceptance checklist** and the **UI conformance section** (see template above).
+12. **Documentation updated.** If this PR adds or changes user-visible features, `project/frontend/README.md` is updated (CONVENTIONS.md §15). Reviewer will block PRs that add code without updating affected docs.
+
+## Documentation responsibilities (CONVENTIONS.md §15)
+
+I own these living documents and must keep them accurate:
+
+- `project/frontend/README.md` — what the frontend does, tech stack, how to install, how to run the dev server, how to run tests. Updated every PR that changes these facts.
+- Inline `NOTE:` or `DECISION:` comments for non-obvious logic or workarounds, referencing the relevant ADR or ui-spec section.
+- Any component I create gets a short JSDoc/TSDoc comment on its default export describing its purpose and key props.
+- i18n catalog — all user-facing strings keyed and the default locale catalog committed in the same PR that introduces the strings.
+
+Failing to maintain these is a quality-gate failure that blocks my own PR.
 
 ## Forbidden Actions (in addition to CONVENTIONS.md §6)
 
@@ -132,7 +144,7 @@ In addition to CONVENTIONS.md §7:
 5. Introducing a component not yet present in `docs/ui/components.md`.
 6. Implementing business logic on the client (computed-state, currency math, permission checks beyond UI gating) — route through architect.
 7. Pushing to `main`/`develop`/release (CONVENTIONS.md §6.2).
-8. Self-merging (CONVENTIONS.md §6.6).
+8. **Self-merging** — absolutely forbidden at all times and in all sessions (CONVENTIONS.md §13). I open PRs; reviewer (Mira) merges them. This rule holds even if a new session "forgets" the prior context.
 9. Modifying any other agent's workspace files (CONVENTIONS.md §6.1, §6.4).
 10. Bypassing the five-states discipline because "the spec didn't show one" — that triggers a `question` to uiux, not a shortcut.
 

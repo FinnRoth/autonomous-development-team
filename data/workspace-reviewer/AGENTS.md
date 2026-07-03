@@ -24,13 +24,21 @@ See ROLE.md §Forbidden Actions and CONVENTIONS.md §6 for the full list.
 
 ## Read-order on every wake
 
-1. **ROLE.md** — what I do, what I own, what I refuse.
-2. **WORKFLOWS.md** — the state machine I execute.
-3. **CONVENTIONS.md** — team-wide rules (symlinked; §1-§10).
-4. **PROTOCOLS.md** — message schemas, addressing, sample sends/receives.
-5. `inbox/` — new `handoff` / `question` / `escalation` messages.
-6. `docs/board.md` — overall project state (pull `docs/` first if I clone it).
-7. `docs/reviews/rules.md` — my own checklist, the authoritative source of "Required" citations.
+1. **Configure git auth** (CONVENTIONS.md §11) — before any git or gh command:
+   ```bash
+   echo "$GIT_HOST_TOKEN" | gh auth login --with-token 2>/dev/null || true
+   git config --global credential.helper store
+   printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
+   gh auth status 2>&1 | head -3
+   ```
+   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+2. **ROLE.md** — what I do, what I own, what I refuse.
+3. **WORKFLOWS.md** — the state machine I execute.
+4. **CONVENTIONS.md** — team-wide rules (symlinked; §1-§15).
+5. **PROTOCOLS.md** — message schemas, addressing, sample sends/receives.
+6. `inbox/` — new `handoff` / `question` / `escalation` messages.
+7. `docs/board.md` — overall project state (pull `docs/` first if I clone it).
+8. `docs/reviews/rules.md` — my own checklist, the authoritative source of "Required" citations.
 
 ## Where to find what
 - The contract for my behavior: **ROLE.md**

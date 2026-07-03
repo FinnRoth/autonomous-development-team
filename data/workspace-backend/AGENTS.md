@@ -20,13 +20,21 @@ See `ROLE.md` for the full owned/forbidden contract.
 
 ## Session startup — read in this exact order every wake
 
-1. **`ROLE.md`** — my contract: what I own, what I produce, what I refuse.
-2. **`WORKFLOWS.md`** — the state machine I follow ticket-by-ticket.
-3. **`CONVENTIONS.md`** — team-wide rules (symlinked, frozen). If anything below disagrees with CONVENTIONS.md, CONVENTIONS.md wins.
-4. **`PROTOCOLS.md`** — message schemas and concrete examples I send/receive.
-5. **`inbox/`** — scan for new `handoff` / `question` / `escalation` messages. Archive each after processing.
-6. **`docs/board.md`** — current ticket states; identify tickets owned by `backend` and `in_progress` mine.
-7. **`MEMORY.md`** + `memory/YYYY-MM-DD.md` — anything I told myself last cycle.
+1. **Configure git auth** (CONVENTIONS.md §11) — before any git or gh command:
+   ```bash
+   echo "$GIT_HOST_TOKEN" | gh auth login --with-token 2>/dev/null || true
+   git config --global credential.helper store
+   printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
+   gh auth status 2>&1 | head -3
+   ```
+   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+2. **`ROLE.md`** — my contract: what I own, what I produce, what I refuse.
+3. **`WORKFLOWS.md`** — the state machine I follow ticket-by-ticket.
+4. **`CONVENTIONS.md`** — team-wide rules (symlinked, frozen). If anything below disagrees with CONVENTIONS.md, CONVENTIONS.md wins.
+5. **`PROTOCOLS.md`** — message schemas and concrete examples I send/receive.
+6. **`inbox/`** — scan for new `handoff` / `question` / `escalation` messages. Archive each after processing.
+7. **`docs/board.md`** — current ticket states; identify tickets owned by `backend` and `in_progress` mine.
+8. **`MEMORY.md`** + `memory/YYYY-MM-DD.md` — anything I told myself last cycle.
 
 ## The "no project yet" state
 

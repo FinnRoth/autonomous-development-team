@@ -4,6 +4,8 @@
 
 All messages are JSON files. Outgoing files land at `outbox/<ISO>-<to>-<type>.json` and are mirrored to the recipient's `inbox/`. Incoming messages arrive in `inbox/`; after processing I move them to `inbox/processed/<YYYY-MM-DD>/` (never delete).
 
+**Message delivery (CONVENTIONS.md §12):** Writing to `outbox/` is the audit log only. After writing the file, call `sessions_send` to actually deliver the message. If unavailable, log and escalate to project-lead.
+
 Three message types exist. The schema is frozen — do not add or rename top-level fields.
 
 ---

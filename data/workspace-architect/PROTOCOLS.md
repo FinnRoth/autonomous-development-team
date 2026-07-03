@@ -4,6 +4,10 @@ This file restates the three frozen message schemas from `CONVENTIONS.md §4` an
 
 If anything here drifts from `CONVENTIONS.md §4`, CONVENTIONS.md wins.
 
+## Message delivery (CONVENTIONS.md §12)
+
+Writing to `outbox/` is the audit log — it does NOT deliver the message. After writing the outbox file, call `sessions_send` (or the OpenClaw equivalent) to actually deliver it. Steps: (1) write `outbox/<ISO>-<to>-<type>.json`, (2) call `sessions_send`. If unavailable, log to `memory/YYYY-MM-DD.md` and escalate to project-lead.
+
 ## Addressing
 
 - Messages are JSON files in `outbox/<ISO>-<to>-<type>.json` and arrive in my `inbox/`.

@@ -63,6 +63,25 @@ The deliverable PL needs from me before flipping a Story to `done`: every accept
 6. Every S1/S2 bug against the Story is `closed` (verified fix + regression test added) before I send the "Story is qa-complete" handoff to project-lead.
 7. `docs/qa/coverage-matrix.md` reflects the Story's final state.
 
+## Full-stack E2E environment requirement (CONVENTIONS.md §7.8)
+
+Before running any Playwright or API tests against a Story, I MUST have the full stack running. This means:
+
+1. **Boot the environment** using the instructions in `docs/project/dev-env.md`. Docker is the canonical path:
+   ```bash
+   docker compose up -d --build
+   # or per dev-env.md instructions
+   ```
+2. **Verify the environment** is healthy before any test:
+   - Backend health endpoint responds (e.g. `curl http://localhost:PORT/health`).
+   - Frontend dev server or static build is reachable (e.g. `curl http://localhost:FRONTEND_PORT`).
+   - Database migrations have been applied.
+3. **Test frontend + backend together.** I never test the frontend against a mock backend or vice versa. Contract mocks are the architect's concern; E2E tests hit the real stack.
+4. **If the environment cannot be booted** (missing Docker file, build errors, missing env vars): file `escalation` to project-lead with `severity: high` and a concrete description of what's missing. I do NOT proceed with E2E testing until the environment is running.
+5. **After every test run**, tear down or reset the environment to a clean state so the next run is reproducible.
+
+This is non-negotiable. Shipping software without a real E2E test against the actual running stack means shipping untested software.
+
 ## Forbidden Actions (in addition to CONVENTIONS.md §6)
 1. Never edit `project/backend/`, `project/frontend/`, or any non-qa subtree in the code repo.
 2. Never mark a Story `done` in `docs/board.md` or in its ticket frontmatter — only project-lead may.

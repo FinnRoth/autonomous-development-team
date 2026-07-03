@@ -117,6 +117,17 @@
         codex: { agents: ['frontend'] },
       },
 
+      // ─────────── web search: DuckDuckGo (shared by all agents) ───────────
+      // Default web search via DuckDuckGo — no API key required.
+      // Agents use this for quick web lookups, library research, error messages, etc.
+      // context7 remains the preferred source for framework docs, but web search fills the gaps.
+      'web-search': {
+        enabled: true,
+        command: 'npx',
+        args: ['-y', '@nickclyde/duckduckgo-mcp-server'],
+        codex: { agents: ['project-lead', 'architect', 'backend', 'frontend', 'uiux', 'reviewer', 'qa'] },
+      },
+
       // ─────────── git host: USE gh CLI VIA SHELL EXEC ───────────
       // We deliberately do NOT wire a github MCP server here:
       //   - @modelcontextprotocol/server-github is deprecated/unsupported.

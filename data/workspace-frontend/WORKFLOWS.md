@@ -134,15 +134,27 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
 ## State 7 — ADDRESS_REVIEW
 
 - **Name:** `ADDRESS_REVIEW`
-- **Entry condition:** Reviewer left `request_changes` or comments requiring action.
-- **Exit condition:** Reviewer verdict is `approve`.
+- **Entry condition:** Reviewer left `request_changes` or inline comments.
+- **Exit condition:** Reviewer verdict is `approve`. I do NOT merge — reviewer merges (CONVENTIONS.md §13).
 - **Actions:**
-  1. Run `address-review-comments` skill: walk every reviewer comment; for each, either apply a fix or reply with rationale.
-  2. If a reviewer request contradicts the spec → reply on the PR with the ui-spec §/`P-NN` citation and file a `question` to uiux (cc reviewer in the PR thread). Do not capitulate to off-spec requests silently.
-  3. Re-run all gates (lint/type/tests/tokens-lint/axe-check) before re-requesting review.
-  4. Push amendments; re-request review.
+  1. Fetch the full review: `gh pr view <num> --comments` — read **every** inline comment and the summary. Do not skip any.
+  2. Classify each item:
+     - `[Required]` — MUST fix before re-requesting review.
+     - `[Suggested]` — fix if it improves the code; if declining, reply with a clear rationale.
+     - `[Nit]` — fix or decline with a one-line reply.
+  3. Run `address-review-comments` skill:
+     - Apply all Required fixes.
+     - Apply or consciously decline each Suggested/Nit; leave a reply on every thread.
+     - If a reviewer request contradicts the spec → reply on the PR with the ui-spec §/`P-NN` citation and file a `question` to uiux (cc reviewer in the PR thread). Do not capitulate to off-spec requests silently; do not silently ignore the comment either.
+  4. Re-run all gates (lint/type/tests/tokens-lint/axe-check) before re-requesting review.
+  5. Push amendments with `[<ID>] address review: <brief>` commit messages.
+  6. Reply "addressed in <SHA>" on every Required thread. Reply to every Suggested/Nit thread.
+  7. Re-request review via `gh pr request-review --reviewer <reviewer-agent-id>` (or host equivalent).
 - **Output artifacts:** Updated commits, PR replies.
-- **On error:** Reviewer and uiux disagree → `escalation` severity=`high` to project-lead with both viewpoints.
+- **On error:**
+  - Reviewer asks for something contradicting an ADR → `escalation` severity=`high` to project-lead citing both the comment and the ADR.
+  - Reviewer and uiux disagree → `escalation` severity=`high` to project-lead with both viewpoints.
+  - CI fails on my fix push → fix CI before re-requesting review.
 
 ---
 
