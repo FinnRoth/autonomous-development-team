@@ -2,6 +2,8 @@
 
 All messages are JSON files written to `outbox/<ISO>-<to>-<type>.json` and mirrored into the recipient's `inbox/` by the OpenClaw gateway. Three types, schemas frozen in CONVENTIONS.md §4. This file restates them and gives role-specific concrete examples.
 
+**Message delivery (CONVENTIONS.md §12):** Writing to `outbox/` is the audit log only. After writing the file, call `sessions_send` to actually deliver the message. If unavailable, log and escalate to project-lead.
+
 ---
 
 ## A. The three schemas (frozen — CONVENTIONS.md §4)

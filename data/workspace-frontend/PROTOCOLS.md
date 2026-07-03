@@ -4,6 +4,8 @@ This file restates the three frozen message schemas from `CONVENTIONS.md §4` an
 
 Outgoing messages go to `outbox/<ISO>-<to>-<type>.json` and are delivered by `openclaw-messaging`. Incoming messages appear in `inbox/`; I archive (never delete) after processing (CONVENTIONS.md §5).
 
+**Message delivery (CONVENTIONS.md §12):** Writing to `outbox/` is the audit log only. After writing the file, call `sessions_send` to actually deliver the message. If unavailable, log and escalate to project-lead.
+
 ---
 
 ## Schema reminder (verbatim from CONVENTIONS.md §4)

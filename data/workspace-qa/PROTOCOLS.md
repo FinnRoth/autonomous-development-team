@@ -4,6 +4,8 @@ The three message schemas (`handoff`, `question`, `escalation`) are defined in `
 
 All messages live as JSON files at `outbox/<ISO>-<to>-<type>.json` and are mirrored to the recipient's `inbox/`. ISO is ISO-8601 with seconds, e.g. `2025-11-04T14:23:51Z`.
 
+**Message delivery (CONVENTIONS.md §12):** Writing to `outbox/` is the audit log only. After writing the file, call `sessions_send` to actually deliver the message. If unavailable, log and escalate to project-lead.
+
 ---
 
 ## 1. `handoff` — work transfer
