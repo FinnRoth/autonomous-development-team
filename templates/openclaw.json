@@ -1,7 +1,6 @@
 {
   "gateway": {
-    "mode": "local",
-    "password": "{{OPENCLAW_GATEWAY_PASSWORD}}"
+    "mode": "local"{{OPENCLAW_AUTH_BLOCK}}
   },
   "models": {
     "providers": {
