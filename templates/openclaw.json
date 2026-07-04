@@ -1,0 +1,23 @@
+{
+  "gateway": {
+    "mode": "local",
+    "password": "{{OPENCLAW_GATEWAY_PASSWORD}}"
+  },
+  "models": {
+    "providers": {
+      "litellm": {
+        "baseUrl": "{{LITELLM_BASE_URL}}/litellm/v1",
+        "apiKey": "${LITELLM_API_KEY}",
+        "api": "openai-completions",
+        "models": [
+          {
+            "id": "anthropic--claude-opus-4-6",
+            "name": "Claude Opus 4.6",
+            "reasoning": true,
+            "input": ["text", "image"]
+          }
+        ]
+      }
+    }
+  }
+}
