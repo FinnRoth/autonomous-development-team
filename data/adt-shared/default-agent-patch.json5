@@ -5,8 +5,8 @@
 {
   agents: {
     list: [
-      { id: 'main', default: false },
-      { id: 'project-lead', default: true },
+      // { id: 'main', default: true }, this line must *NOT* be included
+      { id: 'project-lead', default: true }, // should look like this
     ],
   },
 
