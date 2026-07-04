@@ -122,7 +122,47 @@ for agent in "${AGENTS[@]}"; do
   fi
 done
 
+# ─── start container ────────────────────────────────────────────────────────
+section "Starting container"
+
+docker compose -f "$REPO_ROOT/docker-compose.yml" up -d --build
+info "Container started — waiting for OpenClaw to be ready..."
+
+CONTAINER_NAME_ACTUAL=$(docker inspect -f '{{.Name}}' "$(docker compose -f "$REPO_ROOT/docker-compose.yml" ps -q)" 2>/dev/null | sed 's|/||' || echo "$CONTAINER_NAME")
+for i in $(seq 1 30); do
+  if docker exec "$CONTAINER_NAME_ACTUAL" curl -sf http://localhost:18789/health >/dev/null 2>&1; then
+    info "OpenClaw is ready"
+    break
+  fi
+  [[ $i -eq 30 ]] && { echo -e "${RED}✗ OpenClaw did not become ready in time${NC}"; exit 1; }
+  sleep 2
+done
+
+# ─── apply openclaw config patches ──────────────────────────────────────────
+section "Applying OpenClaw config patches"
+
+PATCHES_DIR="/home/node/.openclaw/adt-shared/patches"
+
+# 1. base patch — substitute placeholders then pipe via stdin
+sed \
+  -e "s|{{OPENCLAW_GATEWAY_PASSWORD}}|${OPENCLAW_GATEWAY_PASSWORD}|g" \
+  -e "s|{{LITELLM_BASE_URL}}|${LITELLM_BASE_URL}|g" \
+  "$REPO_ROOT/data/adt-shared/patches/base-patch.json5" \
+  | docker exec -i "$CONTAINER_NAME_ACTUAL" openclaw config patch --stdin
+info "base-patch applied"
+
+# 2. default-agent patch
+docker exec "$CONTAINER_NAME_ACTUAL" openclaw config patch --file "$PATCHES_DIR/default-agent-patch.json5"
+info "default-agent-patch applied"
+
+# 3. MCP patch
+docker exec "$CONTAINER_NAME_ACTUAL" openclaw config patch --file "$PATCHES_DIR/mcp-patch.json5"
+info "mcp-patch applied"
+
+# validate
+docker exec "$CONTAINER_NAME_ACTUAL" openclaw config validate && info "Config valid"
+
 # ─── done ───────────────────────────────────────────────────────────────────
 echo
 echo -e "${GREEN}${BOLD}Setup complete.${NC}"
-echo -e "Run ${BOLD}docker compose up -d --build${NC} to start ADT."
+echo -e "ADT is running. Connect to the gateway at ${BOLD}http://localhost:${GATEWAY_PORT}${NC}"
