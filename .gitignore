@@ -33,6 +33,9 @@ npm-debug.log*
 /data/workspace-*/docs/*
 /data/workspace-*/misc/*
 
+# Re-exclude workspace-attestations runtime dir, that was included by !/data/workspace-*/
+/data/workspace-attestations/
+
 # Restore sentinels
 !/data/workspace-*/memory/.gitkeep
 !/data/workspace-*/inbox/.gitkeep
