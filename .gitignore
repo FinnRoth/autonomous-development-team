@@ -28,7 +28,8 @@ npm-debug.log*
 /data/workspace-*/openclaw-workspace-state.json
 /data/workspace-*/memory/*.md
 /data/workspace-*/MEMORY.md
-/data/workspace-*/USER.md
+/data/workspace-project-lead/USER.md
+!/data/workspace-*/USER.md
 /data/workspace-*/inbox/*
 /data/workspace-*/outbox/*
 /data/workspace-*/code/*
