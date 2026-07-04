@@ -10,6 +10,9 @@ Thumbs.db
 node_modules/
 npm-debug.log*
 
+# ─── ADT generated files (created by scripts/setup.sh) ─────────────
+docker-compose.yml
+
 # ─── ADT runtime state (everything under data/ that is NOT template) ─
 # Pattern: default-deny data/, re-include template pieces, re-exclude runtime
 # state that lands inside re-included workspaces.
@@ -28,7 +31,6 @@ npm-debug.log*
 /data/workspace-*/openclaw-workspace-state.json
 /data/workspace-*/memory/*.md
 /data/workspace-*/MEMORY.md
-!/data/workspace-*/USER.md
 /data/workspace-project-lead/USER.md
 /data/workspace-*/inbox/*
 /data/workspace-*/outbox/*
