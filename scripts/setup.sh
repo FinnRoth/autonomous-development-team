@@ -27,7 +27,7 @@ WARN="${YELLOW}!${NC}"
 ARROW="${CYAN}▸${NC}"
 BULLET="${DIM}·${NC}"
 
-TOTAL_STEPS=6
+TOTAL_STEPS=7
 CURRENT_STEP=0
 
 step() {
@@ -120,6 +120,7 @@ ${BOLD}${CYAN}    █▀█ █▄▀  █ ${NC}    ${DIM}A cloneable 7-agent Op
     ${BULLET} collect a handful of connection details
     ${BULLET} generate ${BOLD}docker-compose.yml${NC} and ${BOLD}data/openclaw.json${NC}
     ${BULLET} build and boot the container
+    ${BULLET} register the 7 ADT agents with OpenClaw
     ${BULLET} apply MCP + default-agent patches inside the running container
 
   Press ${BOLD}Enter${NC} to accept the ${DIM}[default]${NC} shown in brackets.
@@ -364,7 +365,44 @@ if [[ $READY -ne 1 ]]; then
 fi
 ok "gateway is ready"
 
-# ─── [6] apply patches ─────────────────────────────────────────────────────
+# ─── [6] register agents ───────────────────────────────────────────────────
+step "Registering ADT agents"
+
+# The 7 ADT agents that back the workspaces already committed in the repo.
+# Order matters only for cosmetics; project-lead first so it's the natural
+# 'main' replacement.
+ADT_AGENTS=(project-lead architect backend frontend uiux reviewer qa)
+ADT_MODEL="litellm/anthropic--claude-opus-4-6"
+
+# `openclaw agents add` is idempotent-ish: it errors if the agent already
+# exists. Skip agents that are already present so re-runs of setup.sh don't
+# fail on a second boot.
+EXISTING_AGENTS=$(docker exec "$CONTAINER_NAME_ACTUAL" openclaw agents list 2>/dev/null \
+                    | awk '/^- /{gsub(/[()]/,""); print $2}')
+
+ADD_LOG="$LOG_DIR/agents-add.log"
+: > "$ADD_LOG"
+
+for agent in "${ADT_AGENTS[@]}"; do
+  if grep -qxF "$agent" <<<"$EXISTING_AGENTS"; then
+    note "$agent already registered — skipping"
+    continue
+  fi
+  sub "adding $agent"
+  if docker exec "$CONTAINER_NAME_ACTUAL" openclaw agents add \
+        --workspace "/home/node/.openclaw/workspace-$agent" \
+        --model "$ADT_MODEL" \
+        --non-interactive \
+        "$agent" >>"$ADD_LOG" 2>&1; then
+    ok "$agent registered"
+  else
+    fail "Failed to register $agent — see $ADD_LOG"
+    tail -20 "$ADD_LOG" | sed 's/^/    /'
+    exit 1
+  fi
+done
+
+# ─── [7] apply patches ─────────────────────────────────────────────────────
 step "Applying OpenClaw patches"
 
 PATCHES_DIR="/home/node/.openclaw/adt-shared/patches"
