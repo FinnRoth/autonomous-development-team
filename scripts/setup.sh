@@ -216,35 +216,46 @@ if [[ -f "$OPENCLAW_JSON" ]]; then
   cp "$OPENCLAW_JSON" "$OPENCLAW_JSON.bak"
 fi
 
-# The template contains {{OPENCLAW_AUTH_BLOCK}} — swap in either a password
-# auth block or nothing, depending on whether a password was supplied.
-if [[ -n "$OPENCLAW_GATEWAY_PASSWORD" ]]; then
-  AUTH_BLOCK=',
-    "auth": {
-      "mode": "password",
-      "password": "'"${OPENCLAW_GATEWAY_PASSWORD//\"/\\\"}"'"
-    }'
-else
-  AUTH_BLOCK=""
+# Generate openclaw.json inline via python (Python is required by an MCP
+# server anyway, and this avoids the fragile multi-line sed/awk dance).
+if ! command -v python3 >/dev/null 2>&1; then
+  fail "python3 is required to generate openclaw.json but was not found in PATH."
+  exit 1
 fi
 
-# Use a temp file to avoid partial writes if sed dies mid-stream.
-TMP_JSON=$(mktemp)
-sed \
-  -e "s|{{LITELLM_BASE_URL}}|${LITELLM_BASE_URL}|g" \
-  "$TEMPLATES/openclaw.json" > "$TMP_JSON"
-# Handle multi-line AUTH_BLOCK replacement with awk (sed struggles with newlines).
-awk -v block="$AUTH_BLOCK" '{gsub(/\{\{OPENCLAW_AUTH_BLOCK\}\}/, block); print}' \
-  "$TMP_JSON" > "$OPENCLAW_JSON"
-rm -f "$TMP_JSON"
-
-# Verify JSON parses (fail loudly if the template + substitution produced garbage).
-if command -v python3 >/dev/null 2>&1; then
-  if ! python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$OPENCLAW_JSON" 2>"$LOG_DIR/json-error.log"; then
-    fail "Generated openclaw.json is not valid JSON. See $LOG_DIR/json-error.log"
-    exit 1
-  fi
-fi
+OPENCLAW_GATEWAY_PASSWORD="$OPENCLAW_GATEWAY_PASSWORD" \
+LITELLM_BASE_URL="$LITELLM_BASE_URL" \
+python3 - "$OPENCLAW_JSON" <<'PY'
+import json, os, sys
+password = os.environ.get("OPENCLAW_GATEWAY_PASSWORD", "")
+base_url = os.environ["LITELLM_BASE_URL"].rstrip("/")
+gateway = {"mode": "local"}
+if password:
+    gateway["auth"] = {"mode": "password", "password": password}
+config = {
+    "gateway": gateway,
+    "models": {
+        "providers": {
+            "litellm": {
+                "baseUrl": f"{base_url}/litellm/v1",
+                "apiKey": "${LITELLM_API_KEY}",
+                "api": "openai-completions",
+                "models": [
+                    {
+                        "id": "anthropic--claude-opus-4-6",
+                        "name": "Claude Opus 4.6",
+                        "reasoning": True,
+                        "input": ["text", "image"],
+                    }
+                ],
+            }
+        }
+    },
+}
+with open(sys.argv[1], "w") as f:
+    json.dump(config, f, indent=2)
+    f.write("\n")
+PY
 ok "data/openclaw.json"
 
 # project-lead USER.md
