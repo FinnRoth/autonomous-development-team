@@ -1,24 +1,83 @@
 // default-agent-patch.json5
 // Applied via `openclaw config patch --file <this>` after `openclaw agents add`
-// has registered each ADT agent. Makes project-lead the user-facing default,
-// demotes 'main' from default, opens up subagent delegation across the team,
-// and enables agent-to-agent messaging so handoffs are actually delivered via
-// `sessions_send` (not just written to outbox files).
+// has registered each ADT agent. This patch:
+//   1. Rewrites `agents.list` with the full 8-entry team (main demoted, 7 ADT
+//      agents as first-class members). Because the patch tool REPLACES arrays
+//      wholesale (recursive-merge only on objects), every agent entry has to
+//      carry all of its fields — otherwise the previously-added workspace/
+//      agentDir/model values are wiped.
+//   2. Enables agent-to-agent messaging so handoffs are delivered via the
+//      `sessions_send` tool, not just written to outbox files.
 {
   agents: {
     list: [
       // 'main' is an OpenClaw seed artifact — kept so runtime state referencing
-      // it stays valid, but not the default.
-      { id: 'main', default: false },
-      // The team's front door.
-      { id: 'project-lead', default: true, subagents: { allowAgents: ['*'] } },
-      // Every worker can delegate to any other worker.
-      { id: 'architect', subagents: { allowAgents: ['*'] } },
-      { id: 'backend',   subagents: { allowAgents: ['*'] } },
-      { id: 'frontend',  subagents: { allowAgents: ['*'] } },
-      { id: 'uiux',      subagents: { allowAgents: ['*'] } },
-      { id: 'reviewer',  subagents: { allowAgents: ['*'] } },
-      { id: 'qa',        subagents: { allowAgents: ['*'] } },
+      // it stays valid, but not the default and not part of the workflow.
+      {
+        id: 'main',
+        default: false,
+      },
+
+      // ── The team's front door ──────────────────────────────────────────────
+      {
+        id: 'project-lead',
+        name: 'project-lead',
+        workspace: '/home/node/.openclaw/workspace-project-lead',
+        agentDir: '/home/node/.openclaw/agents/project-lead/agent',
+        model: 'litellm/anthropic--claude-opus-4-6',
+        default: true,
+        subagents: { allowAgents: ['*'] },
+      },
+
+      // ── Workers ────────────────────────────────────────────────────────────
+      {
+        id: 'architect',
+        name: 'architect',
+        workspace: '/home/node/.openclaw/workspace-architect',
+        agentDir: '/home/node/.openclaw/agents/architect/agent',
+        model: 'litellm/anthropic--claude-opus-4-6',
+        subagents: { allowAgents: ['*'] },
+      },
+      {
+        id: 'backend',
+        name: 'backend',
+        workspace: '/home/node/.openclaw/workspace-backend',
+        agentDir: '/home/node/.openclaw/agents/backend/agent',
+        model: 'litellm/anthropic--claude-opus-4-6',
+        subagents: { allowAgents: ['*'] },
+      },
+      {
+        id: 'frontend',
+        name: 'frontend',
+        workspace: '/home/node/.openclaw/workspace-frontend',
+        agentDir: '/home/node/.openclaw/agents/frontend/agent',
+        model: 'litellm/anthropic--claude-opus-4-6',
+        subagents: { allowAgents: ['*'] },
+      },
+      {
+        id: 'uiux',
+        name: 'uiux',
+        workspace: '/home/node/.openclaw/workspace-uiux',
+        agentDir: '/home/node/.openclaw/agents/uiux/agent',
+        model: 'litellm/anthropic--claude-opus-4-6',
+        subagents: { allowAgents: ['*'] },
+      },
+      {
+        id: 'reviewer',
+        name: 'reviewer',
+        workspace: '/home/node/.openclaw/workspace-reviewer',
+        agentDir: '/home/node/.openclaw/agents/reviewer/agent',
+        model: 'litellm/anthropic--claude-opus-4-6',
+        subagents: { allowAgents: ['*'] },
+      },
+      {
+        id: 'qa',
+        name: 'qa',
+        workspace: '/home/node/.openclaw/workspace-qa',
+        agentDir: '/home/node/.openclaw/agents/qa/agent',
+        model: 'litellm/anthropic--claude-opus-4-6',
+        subagents: { allowAgents: ['*'] },
+      },
     ],
   },
 

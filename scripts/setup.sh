@@ -435,6 +435,27 @@ else
   exit 1
 fi
 
+# Patches say "Restart the gateway to apply" — do that transparently so the
+# user doesn't need to know the two-step dance.
+sub "restarting container so the patches take effect"
+if docker restart "$CONTAINER_NAME_ACTUAL" >/dev/null 2>&1; then
+  # Wait for readiness again (same probe as [5]).
+  READY=0
+  for i in $(seq 1 30); do
+    if docker exec "$CONTAINER_NAME_ACTUAL" curl -sSf --max-time 1 "$HEALTH_URL" >/dev/null 2>&1; then
+      READY=1; break
+    fi
+    sleep 2
+  done
+  if [[ $READY -eq 1 ]]; then
+    ok "container restarted, gateway back up"
+  else
+    warn "container restarted but gateway is slow to come back — check 'docker logs $CONTAINER_NAME_ACTUAL'"
+  fi
+else
+  warn "restart failed — you may need to run 'docker restart $CONTAINER_NAME_ACTUAL' manually"
+fi
+
 # ─── done ──────────────────────────────────────────────────────────────────
 echo
 echo "${GREEN}${BOLD}✔  ADT is up and running.${NC}"
