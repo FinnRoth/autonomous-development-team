@@ -12,6 +12,7 @@ npm-debug.log*
 
 # ─── ADT generated files (created by scripts/setup.sh) ─────────────
 docker-compose.yml
+.setup-logs/
 
 # ─── ADT runtime state (everything under data/ that is NOT template) ─
 # Pattern: default-deny data/, re-include template pieces, re-exclude runtime
