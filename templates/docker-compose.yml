@@ -1,0 +1,26 @@
+services:
+  openclaw:
+    build: .
+    container_name: {{CONTAINER_NAME}}
+    restart: unless-stopped
+
+    ports:
+      - "{{GATEWAY_PORT}}:18789"
+
+    volumes:
+      - ./data:/home/node/.openclaw
+
+    environment:
+      OPENCLAW_GATEWAY_PASSWORD: "{{OPENCLAW_GATEWAY_PASSWORD}}"
+      LITELLM_API_KEY: "{{LITELLM_API_KEY}}"
+      LITELLM_BASE_URL: "{{LITELLM_BASE_URL}}"
+      # ----- ADT integrations -----
+      # Figma personal access token (used by uiux + frontend). Generate at https://www.figma.com/developers/api#access-tokens
+      FIGMA_TOKEN: "{{FIGMA_TOKEN}}"
+      # Git host: optional `gh` (GitHub) / `glab` (GitLab) / `tea` (Gitea) auth token. Reviewer/Backend/Frontend/QA all share this.
+      GIT_HOST_TOKEN: "{{GIT_HOST_TOKEN}}"
+      # Git host CLI to use: one of "gh", "glab", "tea". Defaults to "gh".
+      GIT_HOST_CLI: "{{GIT_HOST_CLI}}"
+
+volumes:
+  data:

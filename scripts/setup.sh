@@ -2,7 +2,8 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TEMPLATES="$REPO_ROOT/data/adt-shared/templates"
+TEMPLATES="$REPO_ROOT/templates"
+AGENT_TEMPLATES="$REPO_ROOT/data/adt-shared/templates"
 
 # ─── colours ────────────────────────────────────────────────────────────────
 RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BOLD='\033[1m'; NC='\033[0m'
@@ -86,7 +87,7 @@ PL_USER="$REPO_ROOT/data/workspace-project-lead/USER.md"
 if [[ -f "$PL_USER" ]]; then
   warn "workspace-project-lead/USER.md already exists — skipping (delete it manually to re-run)"
 else
-  cp "$TEMPLATES/USER.md" "$PL_USER"
+  cp "$AGENT_TEMPLATES/USER.md" "$PL_USER"
   info "workspace-project-lead/USER.md created from template"
 fi
 
