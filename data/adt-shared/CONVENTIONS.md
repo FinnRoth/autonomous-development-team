@@ -147,10 +147,18 @@ workspace-<agent>/
 ├── memory/YYYY-MM-DD.md
 ├── inbox/              ← incoming messages (read; do not delete — archive after processing)
 ├── outbox/             ← outgoing messages (audit log)
-├── docs/               ← git clone of <project>-docs (if applicable)
-├── project/            ← git clone of <project> (if applicable)
-└── skills/<name>/SKILL.md
+├── skills/<name>/SKILL.md
+├── code/               ← ALL git clones and code go here (runtime, not in git)
+├── docs/               ← ALL documents, specs, notes go here (runtime, not in git)
+└── misc/               ← everything else (runtime, not in git)
 ```
+
+**Workspace layout rules (mandatory):**
+- `code/`, `docs/`, `misc/` are the only permitted locations for runtime-generated content.
+- `code/` — git clones, source trees, generated code artefacts.
+- `docs/` — specifications, ADRs, notes, design docs, review outputs.
+- `misc/` — scratch files, temporary artefacts, anything that doesn't fit above.
+- **Never create files or directories at workspace root** other than the known template files listed above. If you need to create something new, it goes inside `code/`, `docs/`, or `misc/`.
 
 **Session startup order** (every wake):
 1. **Authenticate git** — run the git-auth block from §11 before any git/gh command.
@@ -176,6 +184,7 @@ workspace-<agent>/
 9. Never claim a ticket whose `depends_on` are not all `done`.
 10. Never address the user directly unless you are `project-lead`.
 11. Never let a blocked task stop all other work. A blocked task means that specific task is paused; every other unblocked task must continue in parallel.
+12. Never create files or directories at workspace root. All runtime output goes into `code/`, `docs/`, or `misc/` (see §5).
 
 ---
 

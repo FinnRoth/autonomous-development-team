@@ -11,55 +11,35 @@ node_modules/
 npm-debug.log*
 
 # ─── ADT runtime state (everything under data/ that is NOT template) ─
-# The pattern below is: default-ignore data/, then re-include the pieces
-# that constitute the reusable ADT template.
+# Pattern: default-deny data/, re-include template pieces, re-exclude runtime
+# state that lands inside re-included workspaces.
 
 /data/**
 
-# Re-include the shared conventions + MCP patch (template)
+# Re-include template: shared config + all agent workspaces
 !/data/adt-shared/
 !/data/adt-shared/**
-
-# Re-include each agent workspace, but only its authored files (skills + docs).
-!/data/workspace-project-lead/
-!/data/workspace-architect/
-!/data/workspace-backend/
-!/data/workspace-uiux/
-!/data/workspace-frontend/
-!/data/workspace-reviewer/
-!/data/workspace-qa/
-
-# Everything under a workspace is initially re-included…
+!/data/workspace-*/
 !/data/workspace-*/**
 
-# …then we exclude the runtime bits inside each workspace:
+# Re-exclude runtime state inside workspaces
 /data/workspace-*/.git/
 /data/workspace-*/.openclaw/
 /data/workspace-*/openclaw-workspace-state.json
-/data/workspace-*/memory/*.md          # daily logs are per-run
+/data/workspace-*/memory/*.md
 /data/workspace-*/inbox/*
 /data/workspace-*/outbox/*
-# but keep the empty dirs (gitkeep sentinels)
+/data/workspace-*/code/*
+/data/workspace-*/docs/*
+/data/workspace-*/misc/*
+
+# Re-exclude workspace-attestations runtime dir, that was included by !/data/workspace-*/
+/data/workspace-attestations/
+
+# Restore sentinels
 !/data/workspace-*/memory/.gitkeep
 !/data/workspace-*/inbox/.gitkeep
 !/data/workspace-*/outbox/.gitkeep
-
-# Global runtime state we never want in git.
-/data/agents/                           # per-agent codex-home, sessions, sqlite
-/data/state/                            # openclaw.sqlite
-/data/logs/
-/data/identity/                         # device.json (secret)
-/data/devices/                          # paired.json, pending.json
-/data/plugin-skills/                    # runtime cache
-/data/workspace-attestations/           # signed attestations from runs
-/data/workspace/                        # the legacy default workspace (unused post-onboarding)
-/data/openclaw.sqlite*
-/data/openclaw.json
-/data/openclaw.json.bak*
-/data/openclaw.json.last-good
-/data/openclaw.json.pre-finalise.bak
-/data/update-check.json
-
-# But keep the top-level template artifacts under /data
-!/data/adt-shared
-!/data/README.md
+!/data/workspace-*/code/.gitkeep
+!/data/workspace-*/docs/.gitkeep
+!/data/workspace-*/misc/.gitkeep
