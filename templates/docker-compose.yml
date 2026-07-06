@@ -4,11 +4,19 @@ services:
     container_name: {{CONTAINER_NAME}}
     restart: unless-stopped
 
+    # Docker-in-Docker: the container runs its own `dockerd` so anything the
+    # agents build or run stays inside this container. Requires `privileged`
+    # for cgroups / iptables / overlayfs. `docker compose down -v` wipes it all.
+    privileged: true
+
     ports:
       - "{{GATEWAY_PORT}}:18789"
 
     volumes:
       - ./data:/home/node/.openclaw
+      # Named volume (Docker-managed, not a host path) backing the in-container
+      # docker daemon's image/layer store. Keeps DinD state off the host FS.
+      - adt-docker-lib:/var/lib/docker
 
     environment:
       OPENCLAW_GATEWAY_PASSWORD: "{{OPENCLAW_GATEWAY_PASSWORD}}"
@@ -23,4 +31,4 @@ services:
       GIT_HOST_CLI: "{{GIT_HOST_CLI}}"
 
 volumes:
-  data:
+  adt-docker-lib:
