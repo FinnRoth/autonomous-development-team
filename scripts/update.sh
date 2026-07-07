@@ -16,7 +16,7 @@ EXPECTED_USER="/home/node/.openclaw/adt-shared/USER.md"
 EXPECTED_CONV="/home/node/.openclaw/adt-shared/CONVENTIONS.md"
 
 for agent in "${AGENTS[@]}"; do
-  ws="$REPO_ROOT/data/workspace-$agent"
+  ws="$REPO_ROOT/openclaw/data/workspace-$agent"
 
   # USER.md
   if [[ ! -L "$ws/USER.md" ]]; then

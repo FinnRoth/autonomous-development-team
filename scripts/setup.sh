@@ -8,7 +8,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATES="$REPO_ROOT/templates"
-AGENT_TEMPLATES="$REPO_ROOT/data/adt-shared/agent-templates"
+AGENT_TEMPLATES="$REPO_ROOT/openclaw/data/adt-shared/agent-templates"
 LOG_DIR="$REPO_ROOT/.setup-logs"
 mkdir -p "$LOG_DIR"
 
@@ -118,7 +118,7 @@ ${BOLD}${CYAN}    █▀█ █▄▀  █ ${NC}    ${DIM}A cloneable 7-agent Op
   This wizard will:
     ${BULLET} check prerequisites
     ${BULLET} collect a handful of connection details
-    ${BULLET} generate ${BOLD}docker-compose.yml${NC} and ${BOLD}data/openclaw.json${NC}
+    ${BULLET} generate ${BOLD}docker-compose.yml${NC} and ${BOLD}openclaw/data/openclaw.json${NC}
     ${BULLET} build and boot the container
     ${BULLET} register the 7 ADT agents with OpenClaw
     ${BULLET} apply MCP + default-agent patches inside the running container
@@ -194,6 +194,14 @@ GIT_HOST_CHOICE=$(ask_choice "Git host CLI" "1" "gh (GitHub)" "glab (GitLab)" "t
 GIT_HOST_CLI="${GIT_HOST_CHOICE%% *}"
 GIT_HOST_TOKEN=$(ask_secret "Git host token" "optional")
 
+echo
+echo "  ${BOLD}Board API${NC}"
+DEFAULT_BOARD_API_PORT=3001
+while port_in_use "$DEFAULT_BOARD_API_PORT" 2>/dev/null || false; do
+  DEFAULT_BOARD_API_PORT=$((DEFAULT_BOARD_API_PORT + 1))
+done
+BOARD_API_PORT=$(ask "Board API host port (for local inspection; agents use internal hostname)" "$DEFAULT_BOARD_API_PORT")
+
 # ─── [3] generate files ────────────────────────────────────────────────────
 step "Generating configuration files"
 
@@ -207,11 +215,12 @@ sed \
   -e "s|{{FIGMA_TOKEN}}|${FIGMA_TOKEN}|g" \
   -e "s|{{GIT_HOST_TOKEN}}|${GIT_HOST_TOKEN}|g" \
   -e "s|{{GIT_HOST_CLI}}|${GIT_HOST_CLI}|g" \
+  -e "s|{{BOARD_API_PORT}}|${BOARD_API_PORT}|g" \
   "$TEMPLATES/docker-compose.yml" > "$REPO_ROOT/docker-compose.yml"
 ok "docker-compose.yml"
 
 # openclaw.json — always regenerate (idempotent, uses fresh values)
-OPENCLAW_JSON="$REPO_ROOT/data/openclaw.json"
+OPENCLAW_JSON="$REPO_ROOT/openclaw/data/openclaw.json"
 # Backup existing config (so users can recover if the fresh render is wrong).
 if [[ -f "$OPENCLAW_JSON" ]]; then
   cp "$OPENCLAW_JSON" "$OPENCLAW_JSON.bak"
@@ -257,15 +266,15 @@ with open(sys.argv[1], "w") as f:
     json.dump(config, f, indent=2)
     f.write("\n")
 PY
-ok "data/openclaw.json"
+ok "openclaw/data/openclaw.json"
 
 # project-lead USER.md
-PL_USER="$REPO_ROOT/data/workspace-project-lead/USER.md"
+PL_USER="$REPO_ROOT/openclaw/data/workspace-project-lead/USER.md"
 if [[ -f "$PL_USER" ]]; then
-  note "data/workspace-project-lead/USER.md already exists — kept as-is"
+  note "openclaw/data/workspace-project-lead/USER.md already exists — kept as-is"
 else
   cp "$AGENT_TEMPLATES/USER.md" "$PL_USER"
-  ok "data/workspace-project-lead/USER.md (from template)"
+  ok "openclaw/data/workspace-project-lead/USER.md (from template)"
 fi
 
 # ─── [4] verify symlinks ───────────────────────────────────────────────────
@@ -278,7 +287,7 @@ SHARED_DOCS_STRUCT="/home/node/.openclaw/adt-shared/DOCS-REPO-STRUCTURE.md"
 
 SYMLINK_ISSUES=0
 for agent in "${AGENTS[@]}"; do
-  ws="$REPO_ROOT/data/workspace-$agent"
+  ws="$REPO_ROOT/openclaw/data/workspace-$agent"
   for pair in "USER.md:$SHARED_USER" "CONVENTIONS.md:$SHARED_CONV" "DOCS-REPO-STRUCTURE.md:$SHARED_DOCS_STRUCT"; do
     file="${pair%%:*}"
     target="${pair#*:}"
@@ -365,6 +374,19 @@ if [[ $READY -ne 1 ]]; then
   exit 1
 fi
 ok "gateway is ready"
+
+sub "waiting for board-api to become healthy…"
+BOARD_READY=0
+for i in $(seq 1 30); do
+  if docker exec "${CONTAINER_NAME_ACTUAL}" curl -sSf --max-time 1 "http://board-api:3000/health" >/dev/null 2>&1; then
+    BOARD_READY=1
+    break
+  fi
+  sleep 2
+done
+if [[ $BOARD_READY -ne 1 ]]; then
+  warn "board-api did not respond within 60s — check 'docker compose logs board-api'"
+fi
 
 # ─── [6] register agents ───────────────────────────────────────────────────
 step "Registering ADT agents"

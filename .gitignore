@@ -18,34 +18,39 @@ docker-compose.yml
 # Pattern: default-deny data/, re-include template pieces, re-exclude runtime
 # state that lands inside re-included workspaces.
 
-/data/**
+/openclaw/data/**
 
 # Re-include template: shared config + all agent workspaces
-!/data/adt-shared/
-!/data/adt-shared/**
-!/data/workspace-*/
-!/data/workspace-*/**
+!/openclaw/data/adt-shared/
+!/openclaw/data/adt-shared/**
+!/openclaw/data/workspace-*/
+!/openclaw/data/workspace-*/**
 
 # Re-exclude runtime state inside workspaces
-/data/workspace-*/.git/
-/data/workspace-*/.openclaw/
-/data/workspace-*/openclaw-workspace-state.json
-/data/workspace-*/memory/*.md
-/data/workspace-*/MEMORY.md
-/data/workspace-project-lead/USER.md
-/data/workspace-*/inbox/*
-/data/workspace-*/outbox/*
-/data/workspace-*/code/*
-/data/workspace-*/docs/*
-/data/workspace-*/misc/*
+/openclaw/data/workspace-*/.git/
+/openclaw/data/workspace-*/.openclaw/
+/openclaw/data/workspace-*/openclaw-workspace-state.json
+/openclaw/data/workspace-*/memory/*.md
+/openclaw/data/workspace-*/MEMORY.md
+/openclaw/data/workspace-project-lead/USER.md
+/openclaw/data/workspace-*/inbox/*
+/openclaw/data/workspace-*/outbox/*
+/openclaw/data/workspace-*/code/*
+/openclaw/data/workspace-*/docs/*
+/openclaw/data/workspace-*/misc/*
 
-# Re-exclude workspace-attestations runtime dir, that was included by !/data/workspace-*/
-/data/workspace-attestations/
+# Re-exclude workspace-attestations runtime dir, that was included by !/openclaw/data/workspace-*/
+/openclaw/data/workspace-attestations/
 
 # Restore sentinels
-!/data/workspace-*/memory/.gitkeep
-!/data/workspace-*/inbox/.gitkeep
-!/data/workspace-*/outbox/.gitkeep
-!/data/workspace-*/code/.gitkeep
-!/data/workspace-*/docs/.gitkeep
-!/data/workspace-*/misc/.gitkeep
+!/openclaw/data/workspace-*/memory/.gitkeep
+!/openclaw/data/workspace-*/inbox/.gitkeep
+!/openclaw/data/workspace-*/outbox/.gitkeep
+!/openclaw/data/workspace-*/code/.gitkeep
+!/openclaw/data/workspace-*/docs/.gitkeep
+!/openclaw/data/workspace-*/misc/.gitkeep
+
+# board-api Python artifacts
+board-api/__pycache__/
+board-api/*.pyc
+board-api/.pytest_cache/

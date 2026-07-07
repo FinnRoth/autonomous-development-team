@@ -1,6 +1,6 @@
 services:
   openclaw:
-    build: .
+    build: ./openclaw
     container_name: {{CONTAINER_NAME}}
     restart: unless-stopped
 
@@ -13,7 +13,7 @@ services:
       - "{{GATEWAY_PORT}}:18789"
 
     volumes:
-      - ./data:/home/node/.openclaw
+      - ./openclaw/data:/home/node/.openclaw
       # Named volume (Docker-managed, not a host path) backing the in-container
       # docker daemon's image/layer store. Keeps DinD state off the host FS.
       - adt-docker-lib:/var/lib/docker
@@ -30,5 +30,41 @@ services:
       # Git host CLI to use: one of "gh", "glab", "tea". Defaults to "gh".
       GIT_HOST_CLI: "{{GIT_HOST_CLI}}"
 
+    depends_on:
+      board-api:
+        condition: service_healthy
+
+    networks:
+      - adt-internal
+
+  board-api:
+    build: ./board-api
+    container_name: {{CONTAINER_NAME}}-board-api
+    restart: unless-stopped
+
+    ports:
+      # Host-side port for local inspection (e.g. curl http://localhost:3001/health).
+      # Agents always use the internal hostname http://board-api:3000 — never the host port.
+      - "{{BOARD_API_PORT}}:3000"
+
+    volumes:
+      # Named volume — SQLite lives here. Never a host path, never inside the openclaw mount.
+      - board-api-data:/data
+
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+    networks:
+      - adt-internal
+
+networks:
+  adt-internal:
+    driver: bridge
+
 volumes:
   adt-docker-lib:
+  board-api-data:
