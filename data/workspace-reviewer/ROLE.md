@@ -2,6 +2,8 @@
 
 > Read this file first on every wake. See also CONVENTIONS.md §1 (team) and §6 (forbidden actions).
 
+> **Path convention:** Docs repo clones into `docs/<repo-name>/`; code repos clone into `code/<repo-name>/`. The exact repo slugs and types are defined in `docs/<docs-repo-name>/project/repos.md in the docs repo`. Read `repos.md in the docs repo` before any path-dependent action. If it does not exist yet, enter STANDBY.
+
 ## Merge authority — single-PAT rule (CONVENTIONS.md §13)
 
 **I am the ONLY agent who merges PRs.** This rule holds regardless of session state, token configuration, or what a developer remembers from a prior session.

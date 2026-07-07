@@ -48,11 +48,11 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Actions:**
   1. Fetch the PR metadata via host CLI: `gh pr view <num> --json number,title,body,headRefOid,baseRefName,files,statusCheckRollup`.
   2. Verify the PR is targeting `main` (or the project's default branch — read from CONVENTIONS.md §2). If not, immediately **VERDICT** = `REQUEST_CHANGES` with the single Required: "PR must target the default branch (CONVENTIONS.md §2)".
-  3. Open the ticket file `docs/tickets/<TICKET-ID>.md`. Verify:
+  3. Open the ticket file `docs/<docs-repo-name>/tickets/<TICKET-ID>.md`. Verify:
      - Status is `in_review`. If not, send `question` to `project-lead`: "PR <num> opened on ticket whose status is <X>; should I review?" and pause this cycle.
      - The `acceptance` block exists and is non-empty.
   4. Fetch the PR diff: `gh pr diff <num>`.
-  5. Build the **expected paths** set: derive from the ticket's owner (e.g. `backend` → `project/backend/**`, `frontend` → `project/frontend/**`).
+  5. Build the **expected paths** set: derive from the ticket's owner and `docs/<docs-repo-name>/architecture/folder-structure.md` (e.g. `backend` → the backend subtree of the relevant code repo, `frontend` → the frontend subtree). Never hard-code paths — read them from `folder-structure.md`.
   6. Record an intake header in scratch memory (`memory/<DATE>.md`): PR id, ticket id, head SHA, expected paths, CI status.
 - **Exit condition:** All four artifacts (PR metadata, diff, ticket, CI status) are loaded.
 - **Output artifacts:** A scratch entry under `memory/<YYYY-MM-DD>.md`.
@@ -149,16 +149,16 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Actions:**
   1. If any Required item exists OR any acceptance criterion is unaddressed OR CI is red:
      - Post `gh pr review <num> --request-changes --body <link-to-summary>`.
-     - Append a line to `docs/reviews/review-log.md`:
+     - Append a line to `docs/<docs-repo-name>/reviews/review-log.md`:
        ```
        | <ISO> | <PR-num> | <TICKET-ID> | REQUEST_CHANGES | — | <required-count> required, <suggested-count> suggested |
        ```
-     - Commit `docs/reviews/review-log.md` to `docs` repo (`git -C docs add … && git -C docs commit -m "[reviewer] log PR <num> request-changes" && git -C docs push`).
+     - Commit `docs/<docs-repo-name>/reviews/review-log.md` to the docs repo (`git -C repos/<docs-slug> add … && git -C repos/<docs-slug> commit -m "[reviewer] log PR <num> request-changes" && git -C repos/<docs-slug> push`).
      - Transition to **IDLE**.
   2. Else (no Required, all acceptance covered, CI green):
      - Post `gh pr review <num> --approve --body <link-to-summary>`.
      - Run the `merge-pr` skill: `gh pr merge <num> --squash --delete-branch` (or the host equivalent). Capture the merge SHA.
-     - Append to `docs/reviews/review-log.md`:
+     - Append to `docs/<docs-repo-name>/reviews/review-log.md`:
        ```
        | <ISO> | <PR-num> | <TICKET-ID> | APPROVE+MERGED | <merge-sha> | 0 required |
        ```
@@ -166,10 +166,10 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
      - Send `handoff` to `qa` with the merge SHA, the ticket id, and the path to the summary comment.
      - Transition to **POST_MERGE_AUDIT** (scheduled, not immediate — see below).
 - **Exit condition:** Verdict posted, log appended, log committed. For APPROVE: merge complete and QA handoff sent.
-- **Output artifacts:** `docs/reviews/review-log.md` entry; `outbox/<ISO>-qa-handoff.json` (on approve); merge commit on `main`.
+- **Output artifacts:** `docs/<docs-repo-name>/reviews/review-log.md` entry; `outbox/<ISO>-qa-handoff.json` (on approve); merge commit on `main`.
 - **On-error:**
   - Merge conflicts on squash → REQUEST_CHANGES with Required: "Resolve conflicts against `main` and re-push". The verdict flips. Log accordingly.
-  - Push to `docs` repo fails → retry; if persistent, `escalation` `high` to project-lead.
+  - Push to docs repo fails → retry; if persistent, `escalation` `high` to project-lead.
 
 ---
 

@@ -271,14 +271,15 @@ fi
 # ─── [4] verify symlinks ───────────────────────────────────────────────────
 step "Verifying agent workspace symlinks"
 
-AGENTS=(architect backend frontend uiux reviewer qa)
+AGENTS=(project-lead architect backend frontend uiux reviewer qa)
 SHARED_USER="/home/node/.openclaw/adt-shared/USER.md"
 SHARED_CONV="/home/node/.openclaw/adt-shared/CONVENTIONS.md"
+SHARED_DOCS_STRUCT="/home/node/.openclaw/adt-shared/DOCS-REPO-STRUCTURE.md"
 
 SYMLINK_ISSUES=0
 for agent in "${AGENTS[@]}"; do
   ws="$REPO_ROOT/data/workspace-$agent"
-  for pair in "USER.md:$SHARED_USER" "CONVENTIONS.md:$SHARED_CONV"; do
+  for pair in "USER.md:$SHARED_USER" "CONVENTIONS.md:$SHARED_CONV" "DOCS-REPO-STRUCTURE.md:$SHARED_DOCS_STRUCT"; do
     file="${pair%%:*}"
     target="${pair#*:}"
     path="$ws/$file"
@@ -297,7 +298,7 @@ for agent in "${AGENTS[@]}"; do
   done
 done
 if [[ $SYMLINK_ISSUES -eq 0 ]]; then
-  ok "all 6 agent workspaces point at adt-shared/USER.md and adt-shared/CONVENTIONS.md"
+  ok "all 6 agent workspaces point at adt-shared/USER.md, adt-shared/CONVENTIONS.md, and adt-shared/DOCS-REPO-STRUCTURE.md"
 else
   warn "$SYMLINK_ISSUES workspace file(s) are regular files, not symlinks — see notes above"
 fi

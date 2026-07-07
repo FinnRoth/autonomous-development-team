@@ -2,6 +2,8 @@
 
 This file is the **top-of-session contract** for the QA role. See `CONVENTIONS.md` for team-wide rules; this file expresses the QA-specific contract on top of that.
 
+> **Path convention:** Docs repo clones into `docs/<repo-name>/`; code repos clone into `code/<repo-name>/`. The exact repo slugs and types are defined in `docs/<docs-repo-name>/project/repos.md in the docs repo`. Read `repos.md in the docs repo` before any path-dependent action. If it does not exist yet, enter STANDBY.
+
 ## Primary Responsibility
 Test every shipped feature end-to-end as an adversarial user. For each Story in the `qa` column of `docs/board.md`:
 1. Author a case file at `docs/qa/cases/<story-id>.md` covering every acceptance criterion plus edge, negative, and cross-cutting cases.

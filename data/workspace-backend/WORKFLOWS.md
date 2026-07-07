@@ -2,6 +2,8 @@
 
 My state machine is per-ticket. At any time I may have at most one ticket in `CLAIM..MERGED` and one in `POST_MERGE`. New tickets queue in `IDLE`.
 
+> **Path shorthand:** `docs/<docs-repo-name>/` = the docs-type repo clone; `code/<code-repo-name>/` = the code-type repo containing backend source. Substitute real slugs from `docs/<docs-repo-name>/project/repos.md`.
+
 States flow strictly:
 
 ```
@@ -15,12 +17,12 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 ## 1. IDLE
 
 - **Entry condition:** session start with no claimed ticket, OR I just finished `POST_MERGE`.
-- **Exit condition:** I find a ticket in `docs/board.md` with `owner: backend`, `status: ready`, all `depends_on` are `done`, and the highest priority among such tickets — then I move to `CLAIM`.
+- **Exit condition:** I find a ticket in `docs/<docs-repo-name>/board.md` with `owner: backend`, `status: ready`, all `depends_on` are `done`, and the highest priority among such tickets — then I move to `CLAIM`.
 - **Actions:**
   1. Run startup read order (see AGENTS.md).
   2. Process `inbox/` — for each message: handle or queue; archive to `inbox/archive/YYYY-MM-DD/`.
-  3. `cd docs && git pull --ff-only`.
-  4. Open `docs/board.md`; pick the next ticket per the exit condition.
+  3. `cd repos/<docs-slug> && git pull --ff-only`.
+  4. Open `docs/<docs-repo-name>/board.md`; pick the next ticket per the exit condition.
   5. If no ticket: emit a heartbeat note in `memory/YYYY-MM-DD.md` and remain in IDLE.
 - **Output artifacts:** none on disk beyond memory notes.
 - **On-error:**
@@ -34,10 +36,10 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Entry condition:** a ready ticket has been selected in IDLE.
 - **Exit condition:** ticket status flipped to `in_progress`, branch created locally, working copy clean → move to `SPIKE`.
 - **Actions:** run skill `claim-task` with `TICKET-ID`:
-  1. `cd docs && git pull --ff-only`.
-  2. Verify `docs/tickets/<ID>.md` exists, `owner: backend`, `status: ready`, all `depends_on` complete (cross-check `docs/board.md`).
-  3. Edit `docs/tickets/<ID>.md` frontmatter: `status: in_progress`. Commit `[<ID>] claim` to `docs/`, push.
-  4. `cd project && git checkout main && git pull --ff-only`.
+  1. `cd repos/<docs-slug> && git pull --ff-only`.
+  2. Verify `docs/<docs-repo-name>/tickets/<ID>.md` exists, `owner: backend`, `status: ready`, all `depends_on` complete (cross-check `docs/<docs-repo-name>/board.md`).
+  3. Edit `docs/<docs-repo-name>/tickets/<ID>.md` frontmatter: `status: in_progress`. Commit `[<ID>] claim` to the docs repo, push.
+  4. `cd repos/<code-slug> && git checkout main && git pull --ff-only`.
   5. `git checkout -b backend/<ID>-<slug>` (slug = lowercase, kebab-case from ticket title, ≤ 40 chars).
   6. Print to my memory log: full ticket body, the acceptance checklist verbatim, and links to consumed artifacts.
 - **Output artifacts:** docs commit flipping status; new local branch.
@@ -52,10 +54,10 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Entry condition:** ticket claimed, branch checked out.
 - **Exit condition:** I can describe in writing (in memory) every consumed contract artifact and have identified every file I will touch → move to `IMPLEMENT`.
 - **Actions:**
-  1. Read `docs/contracts/openapi.yaml` — locate every operationId implicated by the acceptance criteria.
-  2. Read `docs/architecture/data-model.md` — identify entities/migrations needed.
-  3. Read all relevant `docs/architecture/ADR-*.md` (especially stack, persistence, auth).
-  4. Read `docs/architecture/protocols.md` if cross-service.
+  1. Read `docs/<docs-repo-name>/architecture/api/openapi.yaml` — locate every operationId implicated by the acceptance criteria.
+  2. Read `docs/<docs-repo-name>/architecture/data-model.md` — identify entities/migrations needed.
+  3. Read all relevant `docs/<docs-repo-name>/architecture/adr/ADR-*.md` (especially stack, persistence, auth).
+  4. Read `docs/<docs-repo-name>/architecture/protocols.md` if cross-service.
   5. For every third-party library I will call: `context7` resolve + query for current syntax.
   6. Write to `memory/YYYY-MM-DD.md`: ticket id, file plan (paths I will create/edit), migration plan (if any), open questions.
   7. If any open question is blocking, file a `question` and transition to `BLOCKED`; otherwise continue.
@@ -71,13 +73,13 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Entry condition:** plan written; no blocking question outstanding.
 - **Exit condition:** all planned files written/edited and a local smoke run (start the app, hit one happy-path endpoint or unit-call the new function) succeeds → move to `TEST`.
 - **Actions:**
-  1. For every new endpoint, run skill `scaffold-endpoint` with the operationId to get route+handler+test stub in the right folder per `docs/architecture/folder-structure.md`.
+  1. For every new endpoint, run skill `scaffold-endpoint` with the operationId to get route+handler+test stub in the right folder per `docs/<docs-repo-name>/architecture/folder-structure.md`.
   2. For every schema delta announced by architect, run skill `write-migration`.
   3. Implement handlers, services, persistence.
   4. Wire DI/config explicitly — no globals.
   5. Update `.env.example` if new config keys; queue a `handoff` to architect (not sent yet — bundled with PR open).
   6. Commit incrementally with `[<ID>] <imperative>` subjects.
-- **Output artifacts:** source under `project/backend/**`, migrations, possibly `.env.example` delta.
+- **Output artifacts:** source under `code/<code-repo-name>/backend/**`, migrations, possibly `.env.example` delta.
 - **On-error:**
   - Need a new dependency → check ADRs; if uncovered, file `question` to architect, → BLOCKED.
   - Discover a contract bug → STOP, file `question` to architect, → BLOCKED.
@@ -94,7 +96,7 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   3. Run lint, format, type-check.
   4. Run focused test command on touched files; then full backend test suite.
   5. If a migration was added, run `migrate up` then `migrate down` then `migrate up` against a scratch DB and assert idempotency.
-- **Output artifacts:** test files under `project/backend/tests/**`; CI-equivalent green log captured in memory.
+- **Output artifacts:** test files under `code/<code-repo-name>/backend/tests/**`; CI-equivalent green log captured in memory.
 - **On-error:**
   - A pre-existing test fails unrelated to my change → file `escalation` to `project-lead`, do NOT disable, → BLOCKED.
   - A test I wrote fails → fix code, not test (unless the test is wrong, in which case fix the test).
@@ -106,7 +108,7 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Entry condition:** all checks green.
 - **Exit condition:** the `self-review` checklist is fully ticked → move to `OPEN_PR`.
 - **Actions:** run skill `self-review`:
-  1. `git diff --name-only origin/main..HEAD` — confirm every path is under `project/backend/`, `project/migrations/`, or `.env.example`. Any other path → STOP, escalate or revert.
+  1. `git diff --name-only origin/main..HEAD` — confirm every path is under `code/<code-repo-name>/backend/`, `code/<code-repo-name>/migrations/`, or `.env.example`. Any other path → STOP, escalate or revert.
   2. Re-run lint/format/type-check/tests.
   3. Verify migrations have `down`.
   4. Re-read PR template; confirm I can fill every section.
@@ -125,7 +127,7 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   1. `git push -u origin backend/<ID>-<slug>`.
   2. Build PR body from template (Ticket link, Summary, Acceptance, Changes, Tests, Out-of-scope, Risks) using ticket + commit log.
   3. Open PR via host CLI; title `[<ID>] <imperative>`.
-  4. Flip ticket status to `in_review` in `docs/tickets/<ID>.md`; commit + push to docs.
+  4. Flip ticket status to `in_review` in `docs/<docs-repo-name>/tickets/<ID>.md`; commit + push to docs repo.
   5. Write `outbox/<ISO>-reviewer-handoff.json` per `PROTOCOLS.md`.
   6. If `.env.example` was changed, also write `outbox/<ISO>-architect-handoff.json` noting the env delta for re-blessing.
 - **Output artifacts:** remote branch, open PR, docs commit, outbox messages.
@@ -180,7 +182,7 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Entry condition:** branch cleanup done.
 - **Exit condition:** QA handoff sent, ticket status `qa`, memory archived → return to IDLE.
 - **Actions:**
-  1. Flip ticket status to `qa` in `docs/tickets/<ID>.md`; commit + push docs.
+  1. Flip ticket status to `qa` in `docs/<docs-repo-name>/tickets/<ID>.md`; commit + push docs.
   2. Write `outbox/<ISO>-qa-handoff.json` with the merged SHA, the acceptance criteria, and links to changed files.
   3. Append a post-mortem note to `MEMORY.md` (what was tricky, what I would do differently).
   4. Return to IDLE.

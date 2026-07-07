@@ -1,0 +1,1 @@
+/home/node/.openclaw/adt-shared/DOCS-REPO-STRUCTURE.md

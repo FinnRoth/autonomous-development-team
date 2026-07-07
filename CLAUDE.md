@@ -56,15 +56,17 @@ adt-dev-1-02/
 
 ## 3. The 7 agents (canonical list)
 
-| ID | Name | Emoji | Owns | Primary MCP |
+| ID | Name | Emoji | Writes | Primary MCP |
 |---|---|---|---|---|
-| `project-lead` | Atlas | 🧭 | `docs/project/`, `docs/tickets/`, `docs/board.md` | filesystem, context7, sequential-thinking |
-| `architect` | Cassius | 🏛️ | `docs/architecture/` (ADRs, openapi, data-model) | filesystem, context7, sequential-thinking |
-| `backend` | Forge | 🔧 | `project/backend/**` | filesystem, context7 |
-| `uiux` | Iris | 🎨 | `docs/ui/` (spec, flows, tokens, Figma) | filesystem, context7, figma (rw) |
-| `frontend` | Vela | 💠 | `project/frontend/**` | filesystem, context7, figma (ro), playwright (opt) |
-| `reviewer` | Mira | 🔍 | `docs/reviews/` (PR gating) | filesystem, context7 |
-| `qa` | Krell | 🐛 | `docs/qa/`, `project/qa-tests/**` | filesystem, context7, playwright |
+| `project-lead` | Atlas | 🧭 | tickets, board, vision (in `docs`-type repo) | filesystem, context7, sequential-thinking |
+| `architect` | Cassius | 🏛️ | `architecture/` subtree in docs repo; generated contracts in code repos | filesystem, context7, sequential-thinking |
+| `backend` | Forge | 🔧 | `backend/` subtree in code repos | filesystem, context7 |
+| `uiux` | Iris | 🎨 | `ui/` subtree in docs repo (spec, flows, tokens, Figma) | filesystem, context7, figma (rw) |
+| `frontend` | Vela | 💠 | `frontend/` subtree in code repos | filesystem, context7, figma (ro), playwright (opt) |
+| `reviewer` | Mira | 🔍 | `reviews/` subtree in docs repo; merges PRs | filesystem, context7 |
+| `qa` | Krell | 🐛 | `qa/` subtree in docs repo; `qa-tests/` subtree in code repos | filesystem, context7, playwright |
+
+Repo layout (N repos, typed as `code` or `docs`) is defined at onboarding time in `docs/<docs-repo-name>/project/repos.md` — not fixed to `project` + `project-docs`. See CONVENTIONS.md §2 for the full model.
 
 **`project-lead` is the default agent** — the user's front door. The `main` agent still exists (OpenClaw seed) but is not part of the team. No one talks to `main`.
 

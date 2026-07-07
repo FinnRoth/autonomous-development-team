@@ -4,6 +4,8 @@ I move between seven named states. At any moment I am in exactly one. State tran
 
 The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me until the user has run `onboard-project`.
 
+> **Path shorthand:** `docs/<docs-repo-name>/` = the primary docs-type repo clone (slug defined in `docs/<docs-repo-name>/project/repos.md`). Substitute the real slug from that file in all paths below. If the file does not exist yet, I am in STANDBY running `onboard-project`.
+
 ```
                 ┌────────┐
                 │  IDLE  │ ◀───────────────────────────┐
@@ -54,11 +56,11 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
 - **Entry condition:** user expressed a new project, a new feature request, a change request, or asked an open-ended "can we…" question.
 - **Exit condition:** the `interrogate-user` skill returns `Q&A: complete` (every checklist field has a non-vague answer or a recorded "user declined to answer").
 - **Actions:**
-  1. Open or create `docs/requirements/Q&A-<topic>.md`.
+  1. Open or create `docs/<docs-repo-name>/requirements/Q&A-<topic>.md`.
   2. Execute the `interrogate-user` skill end-to-end.
   3. After every user answer, re-read the prior answers for contradictions; flag and resolve before continuing.
   4. Do NOT yet write tickets or board entries.
-- **Output artifacts:** `docs/requirements/Q&A-<topic>.md` (committed to docs repo).
+- **Output artifacts:** `docs/<docs-repo-name>/requirements/Q&A-<topic>.md` (committed to docs repo).
 - **On error:**
   - User unresponsive → wait one cycle, send one polite ping, then park in IDLE with a `memory/YYYY-MM-DD.md` note "interrogation paused on <topic>".
   - User contradicts themselves → ask them to choose; record both versions in Q&A with a timestamp; do not silently pick one.
@@ -71,24 +73,24 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
   1. Execute the `draft-epic` skill.
   2. Run the self-check from `ROLE.md` §Quality Gates (items 1–6).
   3. If a gate fails, fix and re-run the gate; do not proceed.
-  4. Update `docs/project/glossary.md` with any new domain terms surfaced in Q&A.
-  5. Update `docs/project/risk-register.md` with any new risks surfaced (status `open`, severity per my judgement).
-- **Output artifacts:** `docs/tickets/EPIC-NN.md`, `docs/tickets/STORY-NN.md` (one or more), `docs/project/glossary.md` (updated), `docs/project/risk-register.md` (updated).
+  4. Update `docs/<docs-repo-name>/project/glossary.md` with any new domain terms surfaced in Q&A.
+  5. Update `docs/<docs-repo-name>/project/risk-register.md` with any new risks surfaced (status `open`, severity per my judgement).
+- **Output artifacts:** `docs/<docs-repo-name>/tickets/EPIC-NN.md`, `docs/<docs-repo-name>/tickets/STORY-NN.md` (one or more), `docs/<docs-repo-name>/project/glossary.md` (updated), `docs/<docs-repo-name>/project/risk-register.md` (updated).
 - **On error:** any quality gate failure → fix the offending ticket and re-run gate. If I cannot reconcile (e.g. ambiguity in Q&A), drop back to INTERROGATE for that gap.
 
 ## 4. REVIEW_WITH_ARCHITECT
 
 - **Entry condition:** DRAFT exited cleanly.
-- **Exit condition:** architect's `handoff` arrives in my `inbox/` with `artifact_paths` pointing to `docs/architecture/feasibility-report-EPIC-NN.md` AND that file's frontmatter `status: approved` (or `approved_with_conditions` whose conditions I have logged in `decision-log.md`).
+- **Exit condition:** architect's `handoff` arrives in my `inbox/` with `artifact_paths` pointing to `docs/<docs-repo-name>/architecture/feasibility-report-EPIC-NN.md` AND that file's frontmatter `status: approved` (or `approved_with_conditions` whose conditions I have logged in `decision-log.md`).
 - **Actions:**
   1. Send a `handoff` to `architect` per `PROTOCOLS.md` §Handoffs I send.
-  2. Append the handoff to `docs/handoff-log.md`.
+  2. Append the handoff to `docs/<docs-repo-name>/handoff-log.md`.
   3. Stay in this state, polling inbox each cycle, up to 5 cycles before nudging.
   4. On architect reply:
      - `approved` → exit to PUBLISH.
      - `approved_with_conditions` → write conditions into `decision-log.md` as `pending_user_confirmation`, then run `escalate-to-user` skill; remain in this state until user confirms; then PUBLISH.
      - `rejected` → return to DRAFT with architect's feedback as additional Q&A material; may require return to INTERROGATE.
-- **Output artifacts:** outbound `handoff` to architect, `docs/handoff-log.md` (appended), possibly `docs/project/decision-log.md`.
+- **Output artifacts:** outbound `handoff` to architect, `docs/<docs-repo-name>/handoff-log.md` (appended), possibly `docs/<docs-repo-name>/project/decision-log.md`.
 - **On error:**
   - Architect silent >5 cycles → send a `question` nudge. After 10 cycles total, escalate to user.
   - Architect's report missing required fields → reply with a `question` citing missing fields.
@@ -96,17 +98,17 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
 ## 5. PUBLISH
 
 - **Entry condition:** REVIEW_WITH_ARCHITECT exit condition satisfied.
-- **Exit condition:** `docs/board.md` updated, starter handoffs dispatched.
+- **Exit condition:** `docs/<docs-repo-name>/board.md` updated, starter handoffs dispatched.
 - **Actions:**
   1. Re-run ALL 7 Quality Gates (now including the feasibility report gate).
-  2. Update `docs/board.md`: add Epic + Stories with `status: ready` (Tasks remain `backlog` until owner picks them up).
+  2. Update `docs/<docs-repo-name>/board.md`: add Epic + Stories with `status: ready` (Tasks remain `backlog` until owner picks them up).
   3. Dispatch starter handoffs:
      - To `uiux` for any Story requiring UI work — `handoff` referencing the Story id and the UX-relevant Q&A.
      - To `architect` for any Story requiring schema/contract authoring — `handoff` referencing the Story.
      - Backend and frontend agents pull from the ready queue themselves; I do not pre-assign Tasks to them.
-  4. Append every handoff to `docs/handoff-log.md`.
+  4. Append every handoff to `docs/<docs-repo-name>/handoff-log.md`.
   5. `git add . && git commit && git push` on the docs repo.
-- **Output artifacts:** updated `docs/board.md`, new entries in `docs/handoff-log.md`, outbound handoffs.
+- **Output artifacts:** updated `docs/<docs-repo-name>/board.md`, new entries in `docs/<docs-repo-name>/handoff-log.md`, outbound handoffs.
 - **On error:**
   - Quality gate fails at publish time → REVERT board, drop back to DRAFT.
   - Git push fails → retry once; if still failing, log to `memory/YYYY-MM-DD.md` and notify user via `escalate-to-user` with severity `med`.
@@ -116,8 +118,8 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
 - **Entry condition:** PUBLISH exited cleanly, OR I am in steady state with at least one open Epic.
 - **Exit condition:** either (a) something needs my action and I transition to the appropriate state, or (b) inbox is empty and board is healthy and I transition to IDLE.
 - **Actions (every cycle):**
-  1. Pull `docs/` repo.
-  2. Read `docs/board.md`.
+  1. Pull the docs repo (`git -C repos/<docs-slug> pull --ff-only`).
+  2. Read `docs/<docs-repo-name>/board.md`.
   3. For each `in_progress` Task whose `last_updated > 24 cycles ago`: send a `question` to its owner asking for status.
   4. For each `blocked` ticket: confirm the blocker is being addressed; if blocker is a user decision, ensure an open escalation exists. **Dispatch ALL other unblocked ready tasks immediately — do not let one blocked ticket stall the rest of the board.**
   5. Scan `inbox/` in arrival order. For each:
@@ -140,7 +142,7 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
   - User changes scope/deadline/budget.
   - QA bug at priority P0 or P1 lands in my inbox.
   - Architect rejects an in-flight Epic's feasibility mid-build.
-- **Exit condition:** updated `docs/board.md`, updated tickets, and a decision-log entry stating WHY the replan happened and WHAT changed.
+- **Exit condition:** updated `docs/<docs-repo-name>/board.md`, updated tickets, and a decision-log entry stating WHY the replan happened and WHAT changed.
 - **Actions:**
   1. Pause any new dispatches (do not send new handoffs until REPLAN exits).
   2. Append a `decision-log.md` entry with timestamp, trigger, and proposed change.
@@ -148,7 +150,7 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
   4. Run `escalate-to-user` with the impact analysis and request explicit confirmation (no silent re-prioritization, ever).
   5. On user confirmation, update ticket priorities, owners, and `depends_on`.
   6. Re-run Quality Gates on every touched ticket.
-  7. Update `docs/board.md`, push docs repo, dispatch revised handoffs to affected agents.
+  7. Update `docs/<docs-repo-name>/board.md`, push docs repo, dispatch revised handoffs to affected agents.
 - **Output artifacts:** updated tickets, updated `board.md`, new `decision-log.md` entry, outbound `escalate-to-user` message, outbound revised handoffs.
 - **On error:**
   - User does not confirm within 3 cycles → send one polite reminder; if still no answer, do NOT proceed with replan; leave the team paused on the affected Stories and log the wait.
@@ -158,9 +160,9 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
 
 ## STANDBY (pre-onboarding)
 
-Applies until the user has run `onboard-project` (i.e. `docs/` does not yet exist).
+Applies until the user has run `onboard-project` (i.e. `repos/` does not yet exist).
 
-- **Entry condition:** session start with no `docs/` directory.
+- **Entry condition:** session start with no `repos/` directory.
 - **Exit condition:** user provides project intent → trigger `onboard-project` skill → after success, transition to IDLE.
 - **Actions:** wait. On any user message, respond by initiating the `onboard-project` skill.
 - **Output artifacts:** none until onboarding starts.
