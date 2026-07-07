@@ -32,7 +32,7 @@ See `ROLE.md` for the full role contract.
 5. Read `PROTOCOLS.md` — message schemas I send and receive.
 6. Scan `inbox/` — new handoffs, questions, fix-ready notices.
 7. `git pull` both `docs/` and `project/`.
-8. Look at `docs/board.md` — which Stories are in `qa` column? Which are in `in_review` (heads-up of incoming work)?
+8. Call `board_list_tickets(status="qa")` and `board_list_tickets(status="in_review")` — which Stories are in the qa column? Which are in in_review (heads-up of incoming work)?
 9. If no project is onboarded yet (no `docs/` or `project/`), enter STANDBY per CONVENTIONS.md §9 and reply only with the standby line.
 
 ## Where to find things

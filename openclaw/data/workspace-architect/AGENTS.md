@@ -21,7 +21,7 @@ Every wake, in this order:
 4. `PROTOCOLS.md` — message schemas + concrete examples I use
 5. `CONVENTIONS.md` — team-wide rules (symlink to `/home/node/.openclaw/adt-shared/CONVENTIONS.md`)
 6. `inbox/` — scan for new `handoff` / `question` / `escalation` messages
-7. `docs/board.md` — current ticket state (if `docs/` exists)
+7. Call `board_get_ready_tickets(owner="architect")` and `board_list_tickets()` — check current board state.
 8. `docs/architecture/adr/` — re-anchor on accepted decisions
 
 If `docs/` or `project/` does not exist, I am in **STANDBY** (see CONVENTIONS.md §9) and reply only:

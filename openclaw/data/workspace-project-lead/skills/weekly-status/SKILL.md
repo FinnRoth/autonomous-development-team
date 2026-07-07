@@ -1,8 +1,8 @@
 ---
 name: weekly-status
-description: Generate a user-facing weekly summary from docs/board.md, handoff-log.md, and decision-log.md; send as a handoff to user.
+description: Generate a user-facing weekly summary from board-api, handoff-log.md, and decision-log.md; send as a handoff to user.
 trigger: Heartbeat detects 7 days since last weekly-status run; or user asks for status explicitly.
-inputs: docs/board.md, docs/handoff-log.md, docs/project/decision-log.md, docs/project/risk-register.md.
+inputs: board-api (board_get_board, board_list_tickets), docs/handoff-log.md, docs/project/decision-log.md, docs/project/risk-register.md.
 outputs: outbound handoff message to user with the summary; entry in docs/handoff-log.md.
 ---
 
@@ -16,14 +16,12 @@ outputs: outbound handoff message to user with the summary; entry in docs/handof
 
 ## Step 2 — Aggregate the board
 
-Read `docs/board.md`. Count:
+Call `board_get_board()` to get the full board snapshot and `board_list_tickets()` to get all tickets. Count:
 
-- Stories that moved to `done` in window (cross-check via `git log --since=window_start docs/board.md`).
-- Stories moved to `in_progress` in window.
+- Stories with `status: done` and `updated_at` within window.
+- Stories with `status: in_progress` and `updated_at` within window.
 - Stories currently `blocked`.
-- Bugs opened in window, bugs closed in window.
-
-If the board doesn't track timestamps directly, use `git log --since` on the board file and the tickets folder.
+- Bugs (type `bug`) opened (`created_at` in window) and closed (`status: done`, `updated_at` in window).
 
 ## Step 3 — Aggregate handoffs
 
@@ -104,7 +102,7 @@ Write `outbox/<ISO>-user-handoff.json`:
   "from": "project-lead",
   "to": "user",
   "ticket_id": "weekly-status-<ISO-week>",
-  "artifact_paths": ["docs/board.md"],
+  "artifact_paths": [],
   "summary": "<headline line>",
   "acceptance": ["user acknowledges or replies with direction"],
   "blocking_questions": [
@@ -132,10 +130,8 @@ Append to `docs/handoff-log.md`:
 <ISO> | project-lead → user | handoff | weekly-status-<ISO-week> | "<headline>"
 ```
 
-Commit and push docs.
-
 ## On-error
 
-- No movement at all in window → still send the summary; headline = "Quiet week. Blockers: <list>". Do not skip the user check-in.
+- Board returns no tickets at all → still send the summary; headline = "Quiet week. Blockers: <list>". Do not skip the user check-in.
 - Multiple unanswered escalations to user → group them in one numbered list under "your input needed".
-- Board file corrupt → restore from git, then run.
+- board-api unreachable → retry once after 30 s; if still failing, escalate to user before sending partial summary.

@@ -13,12 +13,12 @@ I am `uiux`. I have access to the following MCP servers. Scopes are declared her
 
 - **Repo:** `<project>-docs` (cloned at `docs/`)
 - **Mode:** read+write on branches `uiux/*` and PRs into the docs default branch.
-- **Use:** commit `docs/ui/**`, `docs/board.md` (read-only for me — `project-lead` owns it), `docs/tickets/<my-ticket>.md` updates (status field only).
+- **Use:** commit `docs/ui/**` only. Ticket status transitions happen via board-api MCP tools, not git.
 - **Forbidden:**
   - I do NOT clone `<project>` (the code repo). I never need it.
   - Never `git push --force` to any shared branch (CONVENTIONS.md §6.2).
   - Never edit `docs/architecture/openapi.yaml` or `docs/architecture/data-model.md` (file a `question` to architect instead).
-  - Never edit ticket frontmatter beyond `status` of a ticket I own.
+  - Never write to `docs/tickets/` — that directory does not exist. Tickets are in board-api only.
 
 ## 3. `openclaw-messaging` — agent-to-agent JSON gateway
 

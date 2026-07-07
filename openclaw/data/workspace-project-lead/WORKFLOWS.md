@@ -30,7 +30,7 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
                 ┌────────┐                             │
                 │PUBLISH │                             │
                 └───┬────┘                             │
-                    │ board updated                    │
+                    │ tickets published                    │
                     ▼                                  │
                 ┌────────┐                             │
                 │MONITOR │ ──── stuck/regression ──▶ REPLAN
@@ -68,15 +68,15 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
 ## 3. DRAFT
 
 - **Entry condition:** Q&A for the topic is `complete`.
-- **Exit condition:** Epic file + Story files written, all Quality Gates 1–6 from `ROLE.md` pass, no Quality Gate 7 yet (that's for after REVIEW).
+- **Exit condition:** Epic + Stories drafted in memory, all Quality Gates 1–6 from `ROLE.md` pass, no Quality Gate 7 yet (that's for after REVIEW).
 - **Actions:**
   1. Execute the `draft-epic` skill.
   2. Run the self-check from `ROLE.md` §Quality Gates (items 1–6).
   3. If a gate fails, fix and re-run the gate; do not proceed.
   4. Update `docs/<docs-repo-name>/project/glossary.md` with any new domain terms surfaced in Q&A.
   5. Update `docs/<docs-repo-name>/project/risk-register.md` with any new risks surfaced (status `open`, severity per my judgement).
-- **Output artifacts:** `docs/<docs-repo-name>/tickets/EPIC-NN.md`, `docs/<docs-repo-name>/tickets/STORY-NN.md` (one or more), `docs/<docs-repo-name>/project/glossary.md` (updated), `docs/<docs-repo-name>/project/risk-register.md` (updated).
-- **On error:** any quality gate failure → fix the offending ticket and re-run gate. If I cannot reconcile (e.g. ambiguity in Q&A), drop back to INTERROGATE for that gap.
+- **Output artifacts:** `docs/<docs-repo-name>/project/glossary.md` (updated), `docs/<docs-repo-name>/project/risk-register.md` (updated). Ticket data exists only in the draft skill's working output — no markdown ticket files are written yet and no board-api calls are made until PUBLISH.
+- **On error:** any quality gate failure → fix the offending ticket draft and re-run gate. If I cannot reconcile (e.g. ambiguity in Q&A), drop back to INTERROGATE for that gap.
 
 ## 4. REVIEW_WITH_ARCHITECT
 
@@ -98,19 +98,20 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
 ## 5. PUBLISH
 
 - **Entry condition:** REVIEW_WITH_ARCHITECT exit condition satisfied.
-- **Exit condition:** `docs/<docs-repo-name>/board.md` updated, starter handoffs dispatched.
+- **Exit condition:** tickets created in board-api, set to `ready`, and contextual starter handoffs dispatched.
 - **Actions:**
   1. Re-run ALL 7 Quality Gates (now including the feasibility report gate).
-  2. Update `docs/<docs-repo-name>/board.md`: add Epic + Stories with `status: ready` (Tasks remain `backlog` until owner picks them up).
-  3. Dispatch starter handoffs:
+  2. For each Epic and Story in the draft: call `board_create_ticket` with all ticket fields. Then call `board_transition_ticket` to move each ticket from `backlog` to `ready`.
+  3. Dispatch contextual starter handoffs:
      - To `uiux` for any Story requiring UI work — `handoff` referencing the Story id and the UX-relevant Q&A.
      - To `architect` for any Story requiring schema/contract authoring — `handoff` referencing the Story.
      - Backend and frontend self-assign from board-api via their heartbeat poll. No explicit assignment handoff is needed. Tickets at `status: ready` with `owner: backend` or `owner: frontend` will be automatically claimed.
   4. Append every handoff to `docs/<docs-repo-name>/handoff-log.md`.
-  5. `git add . && git commit && git push` on the docs repo.
-- **Output artifacts:** updated `docs/<docs-repo-name>/board.md`, new entries in `docs/<docs-repo-name>/handoff-log.md`, outbound handoffs.
+  5. `git add . && git commit && git push` on the docs repo (glossary, risk-register, handoff-log only — no ticket markdown files).
+- **Output artifacts:** tickets created and transitioned in board-api, new entries in `docs/<docs-repo-name>/handoff-log.md`, outbound handoffs.
 - **On error:**
-  - Quality gate fails at publish time → REVERT board, drop back to DRAFT.
+  - Quality gate fails at publish time → do NOT create any board-api tickets; drop back to DRAFT.
+  - `board_create_ticket` fails → retry once; if still failing, log to `memory/YYYY-MM-DD.md` and notify user via `escalate-to-user` with severity `med`.
   - Git push fails → retry once; if still failing, log to `memory/YYYY-MM-DD.md` and notify user via `escalate-to-user` with severity `med`.
 
 ## 6. MONITOR
@@ -122,20 +123,20 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
   2. Call `board_list_tickets(status="in_progress")` to get all in-progress tickets. Check `updated_at` field — tickets not updated in >24 cycles get a nudge.
   3. For each `in_progress` ticket whose `updated_at > 24 cycles ago`: send a `question` to its owner asking for status.
   4. For each `blocked` ticket: confirm the blocker is being addressed; if blocker is a user decision, ensure an open escalation exists. **Dispatch ALL other unblocked ready tasks immediately — do not let one blocked ticket stall the rest of the board.**
-  5. Call `board_get_board()` and regenerate `docs/<docs-repo-name>/board.md` from the response (format as markdown table). Only commit if content has changed. This keeps the human-readable snapshot current.
+  5. Call `board_get_board()` and check for anomalies (stale tickets, unexpected statuses). No board.md file is written or regenerated.
   6. Scan `inbox/` in arrival order. For each:
      - `handoff` from architect → may trigger return to REVIEW_WITH_ARCHITECT outcome handling.
      - `handoff` from reviewer (post-merge) → verify QA has received a handoff for the merged Story; if not, send QA a `handoff` now.
-     - `handoff` from qa (bug report) → run `triage-bug` skill → may create a `BUG-*.md` ticket → may trigger REPLAN.
+     - `handoff` from qa (bug report) → run `triage-bug` skill → may create a new bug ticket via `board_create_ticket` → may trigger REPLAN.
      - `question` to me → reply with a `handoff` (decision) within 1 cycle if I can, else `escalate-to-user`.
      - `escalation` to me → if within my authority, decide and reply; else `escalate-to-user`.
      - **Any technical problem surfaced** (auth, build, env, contract) → delegate via `handoff` to the correct technical agent. Never attempt to solve it myself.
   7. If 7 days since last weekly summary, run `weekly-status` skill.
   8. Archive processed inbox messages to `inbox/processed/`.
-- **Output artifacts:** nudges (outbound `question`), possible new `BUG-*.md`, updated `risk-register.md`, possible `weekly-status` to user, regenerated `docs/<docs-repo-name>/board.md` (if changed).
+- **Output artifacts:** nudges (outbound `question`), possible new bug ticket in board-api, updated `risk-register.md`, possible `weekly-status` to user.
 - **On error:**
   - Inbox parse failure on a single message → archive to `inbox/malformed/`, log to daily memory, continue.
-  - Board file missing or corrupt → call `board_get_board()` to regenerate; if API also fails, escalate to user.
+  - `board_get_board()` fails → retry once; if still failing, escalate to user.
 
 ## 7. REPLAN
 
@@ -143,16 +144,16 @@ The pre-onboarding STANDBY state from `CONVENTIONS.md` §9 also applies to me un
   - User changes scope/deadline/budget.
   - QA bug at priority P0 or P1 lands in my inbox.
   - Architect rejects an in-flight Epic's feasibility mid-build.
-- **Exit condition:** updated `docs/<docs-repo-name>/board.md`, updated tickets, and a decision-log entry stating WHY the replan happened and WHAT changed.
+- **Exit condition:** affected tickets updated in board-api, and a decision-log entry stating WHY the replan happened and WHAT changed.
 - **Actions:**
   1. Pause any new dispatches (do not send new handoffs until REPLAN exits).
   2. Append a `decision-log.md` entry with timestamp, trigger, and proposed change.
   3. Determine impact: which Stories must be re-prioritized, deferred, or cancelled.
   4. Run `escalate-to-user` with the impact analysis and request explicit confirmation (no silent re-prioritization, ever).
-  5. On user confirmation, update ticket priorities, owners, and `depends_on`.
-  6. Re-run Quality Gates on every touched ticket.
-  7. Update `docs/<docs-repo-name>/board.md`, push docs repo, dispatch revised handoffs to affected agents.
-- **Output artifacts:** updated tickets, updated `board.md`, new `decision-log.md` entry, outbound `escalate-to-user` message, outbound revised handoffs.
+  5. On user confirmation, call `board_transition_ticket` and/or `board_update_ticket` (priority, owner, depends_on) for every affected ticket.
+  6. Re-run Quality Gates on every touched ticket draft before updating board-api.
+  7. Push docs repo (decision-log, handoff-log only), dispatch revised handoffs to affected agents.
+- **Output artifacts:** tickets updated in board-api, new `decision-log.md` entry, outbound `escalate-to-user` message, outbound revised handoffs.
 - **On error:**
   - User does not confirm within 3 cycles → send one polite reminder; if still no answer, do NOT proceed with replan; leave the team paused on the affected Stories and log the wait.
   - Conflicting user instructions → reply with a single clarifying question listing the conflict in plain words.

@@ -8,7 +8,7 @@ This file declares the MCP servers and scopes I rely on. The servers themselves 
 - **Read-only sub-scopes I respect by convention (not enforced):**
   - `docs/architecture/**` — owned by architect; I read only.
   - `docs/ui/**` — owned by uiux; I read only.
-  - `docs/tickets/**` — owned by project-lead; I read, I update only `status` on tickets I own per the workflow.
+  - `docs/tickets/` does not exist — all ticket data lives in board-api.
 - **Forbidden:** any other agent's workspace. See CONVENTIONS.md §6.
 
 ## 2. `git` + `gh` CLI (or `glab`/`tea`) — NOT a GitHub MCP server

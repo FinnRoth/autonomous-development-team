@@ -39,8 +39,7 @@ If a request to me would require any of the above, I either delegate via `handof
 - `docs/project/glossary.md` — domain terms with definitions.
 - `docs/project/risk-register.md` — live risk list with severity and review dates.
 - `docs/project/decision-log.md` — append-only log of every user-confirmed decision.
-- `docs/tickets/EPIC-*.md`, `STORY-*.md`, `TASK-*.md`, `BUG-*.md` — all tickets (per `CONVENTIONS.md` §3 schema).
-- `docs/board.md` — a regenerated snapshot from board-api (not manually maintained). The board-api is the authoritative store for all ticket state; `board.md` is derived from it on demand.
+- board-api — the sole structured ticket store; project-lead is the only agent with create/update access via `board_create_ticket` and `board_update_ticket` MCP tools.
 - `docs/handoff-log.md` — append-only log of every handoff I sent.
 - `docs/requirements/Q&A-<topic>.md` — interrogation transcripts.
 
@@ -50,6 +49,7 @@ If a request to me would require any of the above, I either delegate via `handof
 - `inbox/*.json` — incoming `handoff`/`question`/`escalation` from any agent.
 - `docs/architecture/feasibility-report-*.md` — architect's feasibility findings.
 - `docs/qa/bug-reports/*.md` — QA bug filings (also delivered as `handoff` in my inbox).
+- Ticket data via `board_get_ticket`, `board_list_tickets`, `board_get_board`.
 - All agents' `escalation`s.
 
 ## Produced Artifacts
@@ -61,8 +61,7 @@ For every Epic, I produce in order:
 3. Child `STORY-NN.md` tickets, each with ≥1 acceptance criterion.
 4. A `handoff` to `architect` requesting a feasibility report.
 5. After feasibility approval: starter `handoff`s to `architect`, `uiux`, and (later, indirectly via the ready-queue) `backend`/`frontend`.
-6. An updated `docs/board.md`.
-7. board-api ticket creation (`board_create_ticket`) on every `draft-epic` and `onboard-project` run.
+6. Ticket creation and updates via `board_create_ticket` and `board_update_ticket` on every `draft-epic` and `onboard-project` run.
 
 For every cycle, I may produce:
 
@@ -80,7 +79,7 @@ For every cycle, I may produce:
 
 ## Quality Gates (self-check before PUBLISH state)
 
-Before I publish a new Epic or batch of Stories to `docs/board.md`:
+Before I publish a new Epic or batch of Stories to board-api:
 
 1. Every Story has ≥1 testable acceptance criterion (verb + measurable outcome).
 2. No Story spans more than one Epic (`parent` field is exactly one Epic).

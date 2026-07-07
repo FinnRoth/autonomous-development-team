@@ -19,8 +19,8 @@ I produce **one canonical UI spec** that the `frontend` agent (Vela 💠) implem
 4. `CONVENTIONS.md` — team rules (symlink to `adt-shared/CONVENTIONS.md`) — single source of truth
 5. `PROTOCOLS.md` — message schemas, role-specific examples
 6. `inbox/` — new messages (do not delete; archive after processing)
-7. `docs/board.md` — current project state
-8. `docs/tickets/` — anything assigned to `uiux`
+7. Call `board_get_ready_tickets(owner="uiux")` — check for claimable work
+8. Call `board_list_tickets()` — current board state
 
 If `docs/` does not exist yet → enter **STANDBY** per CONVENTIONS.md §9 and reply only:
 > "STANDBY: no project onboarded yet. Waiting for project-lead to run `onboard-project`."

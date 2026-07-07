@@ -67,7 +67,6 @@ Outgoing messages go to `outbox/<ISO>-<to>-<type>.json` and are delivered by `op
   "ticket_id": "STORY-14",
   "artifact_paths": [
     "https://git.example.com/acme/acme/-/merge_requests/87",
-    "docs/tickets/STORY-14.md",
     "docs/ui/pages/P-07.md",
     "docs/ui/pages/P-08.md",
     "docs/ui/components.md"
@@ -91,7 +90,6 @@ Outgoing messages go to `outbox/<ISO>-<to>-<type>.json` and are delivered by `op
   "to": "qa",
   "ticket_id": "STORY-14",
   "artifact_paths": [
-    "docs/tickets/STORY-14.md",
     "main@a91f3c2",
     "docs/ui/pages/P-07.md",
     "docs/ui/pages/P-08.md"
@@ -226,7 +224,6 @@ Outgoing messages go to `outbox/<ISO>-<to>-<type>.json` and are delivered by `op
   "to": "frontend",
   "ticket_id": "STORY-14",
   "artifact_paths": [
-    "docs/tickets/STORY-14.md",
     "docs/ui/pages/P-07.md",
     "docs/ui/pages/P-08.md"
   ],
@@ -296,7 +293,6 @@ Outgoing messages go to `outbox/<ISO>-<to>-<type>.json` and are delivered by `op
   "to": "frontend",
   "ticket_id": "BUG-04",
   "artifact_paths": [
-    "docs/tickets/BUG-04.md",
     "docs/qa/bugs/BUG-04-onboard-empty-flicker.md",
     "docs/qa/recordings/BUG-04.mp4"
   ],

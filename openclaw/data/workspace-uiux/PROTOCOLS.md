@@ -93,7 +93,7 @@ Sent at the end of WORKFLOWS.md state 11 (HANDOFF), when all 10 quality gates fr
 ```
 
 Notes:
-- `acceptance` is copied verbatim from `docs/tickets/STORY-12.md` — never invented (CONVENTIONS.md §6.8).
+- `acceptance` is copied verbatim from the board-api response (`board_get_ticket(id="STORY-12").acceptance`) — never invented (CONVENTIONS.md §6.8).
 - `artifact_paths` always pins the relevant `ui-spec.md` commit; Vela treats this as the read-set.
 - `blocking_questions` is empty unless I am sending a handoff specifically to ask Vela to start partial work while I resolve a `question` with `architect` (rare; default empty).
 
@@ -184,8 +184,6 @@ If I receive a task from `backend` or `reviewer`, I escalate. I do not silently 
   "to": "uiux",
   "ticket_id": "STORY-12",
   "artifact_paths": [
-    "docs/tickets/STORY-12.md",
-    "docs/tickets/EPIC-02.md",
     "docs/requirements/Q&A-billing.md"
   ],
   "summary": "Billing settings page + payment-method management — design needed",

@@ -33,7 +33,7 @@ See `ROLE.md` for the full owned/forbidden contract.
 4. **`CONVENTIONS.md`** — team-wide rules (symlinked, frozen). If anything below disagrees with CONVENTIONS.md, CONVENTIONS.md wins.
 5. **`PROTOCOLS.md`** — message schemas and concrete examples I send/receive.
 6. **`inbox/`** — scan for new `handoff` / `question` / `escalation` messages. Archive each after processing.
-7. **`docs/board.md`** — current ticket states; identify tickets owned by `backend` and `in_progress` mine.
+7. **Call `board_get_ready_tickets(owner="backend")`** — identify claimable tickets; call `board_list_tickets()` to see overall board state.
 8. **`MEMORY.md`** + `memory/YYYY-MM-DD.md` — anything I told myself last cycle.
 
 ## The "no project yet" state

@@ -48,9 +48,9 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Actions:**
   1. Fetch the PR metadata via host CLI: `gh pr view <num> --json number,title,body,headRefOid,baseRefName,files,statusCheckRollup`.
   2. Verify the PR is targeting `main` (or the project's default branch — read from CONVENTIONS.md §2). If not, immediately **VERDICT** = `REQUEST_CHANGES` with the single Required: "PR must target the default branch (CONVENTIONS.md §2)".
-  3. Call `board_get_ticket(ticket_id=<TICKET-ID>)` — this is the **authoritative source** for the ticket's current status and acceptance criteria. Then open the ticket file `docs/<docs-repo-name>/tickets/<TICKET-ID>.md` for narrative context. Verify:
+  3. Call `board_get_ticket(ticket_id=<TICKET-ID>)` — this is the **authoritative source** for the ticket's current status, acceptance criteria, and narrative body. Verify:
      - Board status (from `board_get_ticket`) is `in_review`. If not, send `question` to `project-lead`: "PR <num> opened on ticket whose board status is <X>; should I review?" and pause this cycle.
-     - The `acceptance` block from the board response exists and is non-empty (fall back to the markdown file if the board response omits it).
+     - The `acceptance` block from the board response exists and is non-empty.
   4. Fetch the PR diff: `gh pr diff <num>`.
   5. Build the **expected paths** set: derive from the ticket's owner and `docs/<docs-repo-name>/architecture/folder-structure.md` (e.g. `backend` → the backend subtree of the relevant code repo, `frontend` → the frontend subtree). Never hard-code paths — read them from `folder-structure.md`.
   6. Record an intake header in scratch memory (`memory/<DATE>.md`): PR id, ticket id, head SHA, expected paths, CI status.
@@ -58,7 +58,7 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Output artifacts:** A scratch entry under `memory/<YYYY-MM-DD>.md`.
 - **On-error:**
   - PR not found / 404 → reply to the handoff sender with a `question`: "PR <num> not accessible — has it been opened?"
-  - Ticket missing from board AND from filesystem → `escalation` to `project-lead`, severity `med`, requested_decision: "create or repair ticket <ID>".
+  - Ticket missing from board (`board_get_ticket` returns not found) → `escalation` to `project-lead`, severity `med`, requested_decision: "create or repair ticket <ID>".
 
 ---
 
@@ -66,7 +66,7 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 
 - **Entry condition:** INTAKE complete; all input artifacts loaded.
 - **Actions:** Run the `review-checklist` skill end-to-end. Each item produces a tuple `(status, evidence, citation)` where `status ∈ {pass, fail, n/a}`:
-  1. Ticket linked in PR body? (`Closes #<num>` or explicit `docs/tickets/<ID>.md` mention.)
+  1. Ticket linked in PR body? (`Closes #<num>` or explicit ticket id mention.)
   2. Verbatim acceptance checklist in PR body?
   3. Each acceptance criterion has a visible addressing point (test, code, or note)?
   4. Lint/format passing on CI?

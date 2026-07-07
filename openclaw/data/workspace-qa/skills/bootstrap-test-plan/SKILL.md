@@ -6,7 +6,7 @@ inputs:
   - docs/architecture/overview.md (if present)
   - docs/architecture/openapi.yaml (if present)
   - docs/architecture/folder-structure.md (if present)
-  - docs/tickets/*.md (for story-shape sanity)
+  - board_list_tickets() results (for story-shape sanity)
 outputs:
   - docs/qa/test-plan.md (new file)
   - PR via gh on docs repo branch qa/test-plan-bootstrap

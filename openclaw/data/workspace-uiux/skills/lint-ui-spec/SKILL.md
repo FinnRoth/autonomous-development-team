@@ -2,7 +2,7 @@
 name: lint-ui-spec
 description: Enforce the FROZEN canonical structure of `docs/ui/ui-spec.md` and check that every Story has at least one page.
 trigger: End of every WORKFLOWS state that touches `ui-spec.md`; mandatory before HANDOFF (state 11).
-inputs: Read access to `docs/ui/ui-spec.md`, `docs/ui/pages/`, `docs/ui/flows/`, `docs/tickets/`.
+inputs: Read access to `docs/ui/ui-spec.md`, `docs/ui/pages/`, `docs/ui/flows/`. Board-api access for story cross-reference.
 outputs: Pass/fail. On fail, a concrete list of violations printed to the agent log + a memory entry.
 ---
 
@@ -37,9 +37,9 @@ Pure validator. Never edits files. Either passes silently or fails with a number
 
 7. **Each F-NN file** has H2 sections `## Trigger`, `## Sequence`, `## Success`, `## Error`, `## States touched`, `## Out of scope`. Missing any → FAIL.
 
-8. **Every Story listed as `owner_story` in any P-NN file exists** as `docs/tickets/<STORY-ID>.md`.
+8. **Every Story listed as `owner_story` in any P-NN file has a ticket in board-api.** Call `board_get_ticket(id=<STORY-ID>)` — 404 response → FAIL.
 
-9. **Every Story in `docs/tickets/` with `type: story` AND `status` in {`ready`, `in_progress`, `in_review`, `qa`, `done`} has at least one P-NN file whose `owner_story` equals its id.** Backlog stories are exempt.
+9. **Every Story with `type: story` AND `status` in {`ready`, `in_progress`, `in_review`, `qa`, `done`} (check via `board_list_tickets()`) has at least one P-NN file whose `owner_story` equals its id.** Backlog stories are exempt.
 
 10. **§3 Components rows reference `docs/ui/states.md` entries** that exist for every listed component.
 

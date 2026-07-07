@@ -2,7 +2,7 @@
 name: self-review
 description: Walk my own diff against Quality Gates and Forbidden Actions before opening a PR.
 trigger: State 5 — SELF_REVIEW. After TEST is green.
-inputs: Current branch diff vs main; docs/tickets/<TICKET-ID>.md; docs/ui/ui-spec.md, pages/, components.md, design-tokens.json; ROLE.md.
+inputs: Current branch diff vs main; board_get_ticket(<TICKET-ID>) for acceptance criteria; docs/ui/ui-spec.md, pages/, components.md, design-tokens.json; ROLE.md.
 outputs: A pass/fail report appended to memory/YYYY-MM-DD.md; either green-light to OPEN_PR or a return-to-IMPLEMENT signal with concrete fixes.
 ---
 

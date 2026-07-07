@@ -4,7 +4,6 @@ description: Pull a Story from the qa column, parse its ticket, and produce the 
 trigger: A handoff arrives putting STORY-NN in the qa column, OR I find a Story in qa column without a case file.
 inputs:
   - story_id (e.g. STORY-07)
-  - docs/tickets/<story-id>.md (must exist)
   - linked PR id from the handoff (if any)
 outputs:
   - docs/qa/cases/<story-id>.md (skeleton with acceptance criteria copied verbatim)
@@ -19,9 +18,9 @@ Deterministic intake procedure for a Story landing in the qa column.
 
 1. **Read the handoff** (or the board entry). Extract: `story_id`, optional `pr_id`, optional `notes_from_reviewer`.
 
-2. **Verify the ticket exists.** Run `ls docs/tickets/<story-id>.md`. If absent → send `question` to project-lead "Story <story-id> moved to qa column but `docs/tickets/<story-id>.md` not found." Stop. Wait for answer.
+2. **Verify the ticket exists in board-api.** Call `board_get_ticket(id=<story-id>)`. If 404 → send `question` to project-lead "Story <story-id> moved to qa column but not found in board-api." Stop. Wait for answer.
 
-3. **Read the ticket** in full. Confirm `type: story` (or `task`, `bug`). Confirm `status: qa` in frontmatter. If status is something else, send `question` to project-lead asking for status reconciliation; stop.
+3. **Read the ticket** from the board-api response. Confirm `type: story` (or `task`, `bug`). Confirm `status: qa` in the response. If status is something else, send `question` to project-lead asking for status reconciliation; stop.
 
 4. **Copy the acceptance block verbatim** into local memory. Do not paraphrase. Acceptance is the contract.
 

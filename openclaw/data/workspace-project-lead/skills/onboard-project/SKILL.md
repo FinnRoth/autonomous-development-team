@@ -3,7 +3,7 @@ name: onboard-project
 description: One-time project intake; gathers vision, users, jobs, deadline, repo list (N repos typed as code/docs), stack preference; scaffolds the docs repo and dispatches first handoff to architect.
 trigger: User initiates the very first project on a fresh template (repos/ does not exist) OR explicitly asks to "start a new project".
 inputs: User chat. Workspace with no repos/ directory.
-outputs: docs/<docs-repo-name>/ scaffold (vision.md, repos.md, glossary.md, risk-register.md, decision-log.md, board.md, handoff-log.md), tickets/EPIC-01.md, requirements/Q&A-onboarding.md, outbound handoff to architect.
+outputs: docs/<docs-repo-name>/ scaffold (vision.md, repos.md, glossary.md, risk-register.md, decision-log.md, handoff-log.md), requirements/Q&A-onboarding.md, EPIC-01 ticket created in board-api, outbound handoff to architect.
 ---
 
 # onboard-project — deterministic procedure
@@ -82,7 +82,6 @@ Create the directory skeleton inside the cloned docs repo:
 
 ```
 project/           ← project-level docs (owned by project-lead)
-tickets/           ← all ticket files (owned by project-lead)
 requirements/      ← Q&A transcripts (owned by project-lead)
 architecture/      ← architect will own; create empty
 ui/                ← uiux owns; create empty
@@ -178,92 +177,45 @@ _Append-only. Each entry: ISO timestamp, decision id, decider, summary, link to 
 - <ISO> | D-001 | user | Project onboarded; slug=<slug>; stack=<Q8>; deadline=<Q5>; repos=<slugs>. | requirements/Q&A-onboarding.md
 ```
 
-Create `board.md`:
-
-```markdown
-# Board — <project-slug>
-
-_Updated: <ISO>_
-
-## Epics
-
-| ID | Title | Status | Stories | Priority |
-|---|---|---|---|---|
-| EPIC-01 | Onboarding & stack selection | ready | — | P0 |
-
-## Stories
-
-_(empty until first Epic decomposes)_
-
-## Tasks
-
-_(empty)_
-
-## Bugs
-
-_(empty)_
-```
-
 Create `handoff-log.md` with header only.
 
-## Step 5 — Create EPIC-01
+## Step 5 — Create EPIC-01 in board-api
 
-Write `tickets/EPIC-01.md`:
+Call `board_create_ticket` with the following fields:
 
-```yaml
----
-id: EPIC-01
-type: epic
-title: Onboarding & stack selection
-parent: null
-owner: architect
-status: ready
-priority: P0
-estimate: M
-created: <ISO>
-acceptance:
-  - "ADR-001 exists and is approved, selecting the stack per Q8"
-  - "architecture/overview.md exists with a one-page system sketch"
-  - "architecture/folder-structure.md exists, declaring the canonical layout for every proposed code repo"
-  - "Code repos proposed in architecture/folder-structure.md are confirmed by the user and created on the git host"
-  - "project/repos.md is updated with all confirmed code repo entries"
-  - "Every confirmed code repo contains a README and .gitignore skeleton"
-depends_on: []
-blocks: []
----
-
-## Context
-
-This is the bootstrap Epic. The team cannot proceed until the architect has selected a stack (ADR-001), proposed the code repository structure, got user confirmation, and initialized the repos. Vision, Q&A, and non-goals are attached.
-
-## Scope
-
-- Choose stack consistent with Q8 (deferred to architect if user said "architect's call").
-- Sketch a one-page system overview.
-- Propose code repo names, purposes, and ownership; escalate to project-lead for user confirmation.
-- Create confirmed code repos on the git host (architect creates them if `GIT_HOST_TOKEN` allows; otherwise escalate to user).
-- Initialize each code repo skeleton (README, .gitignore, folder skeleton per folder-structure.md).
-- Write architecture/folder-structure.md — canonical path layout for every code repo.
-- Update project/repos.md with all confirmed repos.
-
-## Non-goals
-
-- No feature work this Epic.
-- No DB schema yet — that belongs to the first feature Epic.
-
-## Open questions
-
-- (filled as architect discovers them via `question` messages)
+```json
+{
+  "id": "EPIC-01",
+  "type": "epic",
+  "title": "Onboarding & stack selection",
+  "parent": null,
+  "owner": "architect",
+  "status": "ready",
+  "priority": "P0",
+  "estimate": "M",
+  "created": "<ISO>",
+  "depends_on": [],
+  "blocks": [],
+  "acceptance": [
+    "ADR-001 exists and is approved, selecting the stack per Q8",
+    "architecture/overview.md exists with a one-page system sketch",
+    "architecture/folder-structure.md exists, declaring the canonical layout for every proposed code repo",
+    "Code repos proposed in architecture/folder-structure.md are confirmed by the user and created on the git host",
+    "project/repos.md is updated with all confirmed code repo entries",
+    "Every confirmed code repo contains a README and .gitignore skeleton"
+  ],
+  "description": "Bootstrap Epic. The team cannot proceed until the architect has selected a stack (ADR-001), proposed the code repository structure, got user confirmation, and initialized the repos. Vision, Q&A, and non-goals are in the docs repo."
+}
 ```
 
-After writing `tickets/EPIC-01.md`, call `board_create_ticket` with EPIC-01's frontmatter fields and body. On failure, log to memory and continue.
+If `board_create_ticket` returns an error, log the full error to memory (`memory/<ISO-date>.md`) and notify the user: "Warning: EPIC-01 could not be registered in board-api (<error>). I will retry on next session. Continuing." Do NOT abort the onboarding.
 
 ## Step 6 — Commit and push docs repo
 
 ```
 cd ~/.openclaw/workspace-project-lead/docs/<docs-repo-name>
 git add .
-git commit -m "[EPIC-01] Onboard project <slug>: vision, repos, Q&A, risk register, EPIC-01"
+git commit -m "[EPIC-01] Onboard project <slug>: vision, repos, Q&A, risk register"
 git push -u origin main
 ```
 
@@ -282,10 +234,9 @@ Write `outbox/<ISO>-architect-handoff.json`:
   "artifact_paths": [
     "docs/<docs-repo-name>/project/vision.md",
     "docs/<docs-repo-name>/project/repos.md",
-    "docs/<docs-repo-name>/requirements/Q&A-onboarding.md",
-    "docs/<docs-repo-name>/tickets/EPIC-01.md"
+    "docs/<docs-repo-name>/requirements/Q&A-onboarding.md"
   ],
-  "summary": "Project onboarded. Docs repo is `<docs-repo-name>`. Please author ADR-001 (stack), architecture/overview.md, and architecture/folder-structure.md. Propose code repos, then escalate to project-lead for user confirmation before creating them.",
+  "summary": "Project onboarded. Docs repo is `<docs-repo-name>`. EPIC-01 is registered in board-api (status: ready). Please author ADR-001 (stack), architecture/overview.md, and architecture/folder-structure.md. Propose code repos, then escalate to project-lead for user confirmation before creating them.",
   "acceptance": [
     "ADR-001 exists and is approved",
     "architecture/overview.md exists",
@@ -305,7 +256,7 @@ Append to `docs/<docs-repo-name>/handoff-log.md`. Commit and push the log update
 
 Send to user:
 
-> "Project `<slug>` is onboarded. Vision and Q&A are committed to `<docs-repo-url>`. I've dispatched EPIC-01 to the architect (Cassius) to choose the stack, propose the code repository structure, and get your confirmation before creating anything. I'll ping you when the architect is ready for sign-off. — Atlas 🧭"
+> "Project `<slug>` is onboarded. Vision and Q&A are committed to `<docs-repo-url>`. EPIC-01 is registered in the board. I've dispatched EPIC-01 to the architect (Cassius) to choose the stack, propose the code repository structure, and get your confirmation before creating anything. I'll ping you when the architect is ready for sign-off. — Atlas 🧭"
 
 ## Step 9 — Transition
 
@@ -316,4 +267,4 @@ Move to MONITOR state. The session is no longer in STANDBY.
 - User abandons mid-interrogation → save partial Q&A to `misc/`, mark `status: paused`, return to STANDBY.
 - Git operations fail → escalate to user with raw error; do not partially commit.
 - Any validation fails (slug regex, vision word count, repo type) → re-prompt the offending question; never silently fix.
-- Fewer than one `code` repo or zero `docs` repos → re-ask Q7 stating the requirement explicitly.
+- `board_create_ticket` fails → log to memory, warn the user, continue (non-fatal).

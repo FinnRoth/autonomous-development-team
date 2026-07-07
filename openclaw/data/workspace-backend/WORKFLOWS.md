@@ -37,12 +37,11 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Exit condition:** ticket status flipped to `in_progress`, branch created locally, working copy clean → move to `SPIKE`.
 - **Actions:** run skill `claim-task` with `TICKET-ID`:
   1. `cd repos/<docs-slug> && git pull --ff-only`.
-  2. Verify `docs/<docs-repo-name>/tickets/<ID>.md` exists, `owner: backend`, `status: ready`, all `depends_on` complete (cross-check `docs/<docs-repo-name>/board.md`).
-  3. Edit `docs/<docs-repo-name>/tickets/<ID>.md` frontmatter: `status: in_progress`. Commit `[<ID>] claim` to the docs repo, push.
-  4. `cd repos/<code-slug> && git checkout main && git pull --ff-only`.
-  5. `git checkout -b backend/<ID>-<slug>` (slug = lowercase, kebab-case from ticket title, ≤ 40 chars).
-  6. Print to my memory log: full ticket body, the acceptance checklist verbatim, and links to consumed artifacts.
-- **Output artifacts:** docs commit flipping status; new local branch.
+  2. Verify ticket via `board_claim_ticket` response — board-api enforces `status==ready` and `depends_on` completion atomically.
+  3. `cd repos/<code-slug> && git checkout main && git pull --ff-only`.
+  4. `git checkout -b backend/<ID>-<slug>` (slug = lowercase, kebab-case from ticket title, ≤ 40 chars).
+  5. Print to my memory log: full ticket body, the acceptance checklist verbatim, and links to consumed artifacts.
+- **Output artifacts:** new local branch.
 - **On-error:**
   - `depends_on` not done → revert any partial edits, file `escalation` to `project-lead` ("attempted to claim <ID> but <DEP> still <status>"), return to IDLE.
   - Branch already exists → checkout it; if it has unrelated commits, file `escalation` to `project-lead`.
@@ -128,10 +127,9 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   2. Build PR body from template (Ticket link, Summary, Acceptance, Changes, Tests, Out-of-scope, Risks) using ticket + commit log.
   3. Open PR via host CLI; title `[<ID>] <imperative>`.
   4. Call `board_transition_ticket(ticket_id=<TICKET-ID>, agent="backend", to="in_review")`.
-  5. Flip ticket status to `in_review` in `docs/<docs-repo-name>/tickets/<ID>.md`; commit + push to docs repo.
-  6. Write `outbox/<ISO>-reviewer-handoff.json` per `PROTOCOLS.md`.
-  7. If `.env.example` was changed, also write `outbox/<ISO>-architect-handoff.json` noting the env delta for re-blessing.
-- **Output artifacts:** remote branch, open PR, docs commit, outbox messages.
+  5. Write `outbox/<ISO>-reviewer-handoff.json` per `PROTOCOLS.md`.
+  6. If `.env.example` was changed, also write `outbox/<ISO>-architect-handoff.json` noting the env delta for re-blessing.
+- **Output artifacts:** remote branch, open PR, outbox messages.
 - **On-error:** push rejected (branch protection / stale) → `git fetch && git rebase origin/main`, re-run tests, re-push. Repeated failure → `escalation` to project-lead.
 
 ---
@@ -184,11 +182,10 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Exit condition:** QA handoff sent, ticket status `qa`, memory archived → return to IDLE.
 - **Actions:**
   1. Call `board_transition_ticket(ticket_id=<TICKET-ID>, agent="backend", to="qa")`.
-  2. Flip ticket status to `qa` in `docs/<docs-repo-name>/tickets/<ID>.md`; commit + push docs.
-  3. Write `outbox/<ISO>-qa-handoff.json` with the merged SHA, the acceptance criteria, and links to changed files.
-  4. Append a post-mortem note to `MEMORY.md` (what was tricky, what I would do differently).
-  5. Return to IDLE.
-- **Output artifacts:** docs commit, qa handoff, memory entry.
+  2. Write `outbox/<ISO>-qa-handoff.json` with the merged SHA, the acceptance criteria, and links to changed files.
+  3. Append a post-mortem note to `MEMORY.md` (what was tricky, what I would do differently).
+  4. Return to IDLE.
+- **Output artifacts:** qa handoff, memory entry.
 - **On-error:** QA inbox missing → `escalation` to project-lead.
 
 ---

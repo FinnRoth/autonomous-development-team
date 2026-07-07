@@ -5,7 +5,7 @@ trigger: After every Story transitions in/out of qa-complete; OR on weekly heart
 inputs:
   - docs/qa/cases/*.md (all case files)
   - docs/qa/bug-reports/*.md (all bug reports)
-  - docs/tickets/*.md (for Story titles and statuses)
+  - board_list_tickets() results (for Story titles and statuses)
 outputs:
   - docs/qa/coverage-matrix.md (fully regenerated)
   - weekly handoff to project-lead with the matrix
@@ -21,7 +21,7 @@ Deterministic regeneration of the coverage matrix.
 
 2. **Enumerate all bug reports.** `ls docs/qa/bug-reports/BUG-*.md`. For each, parse frontmatter (`id`, `severity`, `status`, `related_story`).
 
-3. **Cross-reference with tickets.** For each `story_id`, read `docs/tickets/<story-id>.md` to get the title and current ticket status.
+3. **Cross-reference with board-api.** For each `story_id`, call `board_get_ticket(id=<story_id>)` to get the title and current ticket status.
 
 4. **Build the matrix.** Overwrite `docs/qa/coverage-matrix.md` with this exact structure:
 

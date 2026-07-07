@@ -3,7 +3,7 @@ name: architect-feasibility
 description: From an Epic id, produce a feasibility report covering stack-fit, data/api deltas, cross-cutting impact, risks, recommendation, and required ADRs.
 trigger: A `handoff` from `project-lead` referencing `EPIC-NN` lands in `inbox/`, OR a heartbeat re-opens a stale feasibility request.
 inputs:
-  - ticket: docs/tickets/EPIC-NN.md
+  - ticket: EPIC-NN id (read from board-api via board_get_ticket)
   - vision: docs/project/vision.md
   - any referenced Q&A files under docs/requirements/
   - current architecture artifacts (overview.md, data-model.md, openapi.yaml, protocols.md, accepted ADRs)
@@ -13,7 +13,7 @@ outputs:
 
 # Procedure
 
-1. Verify the Epic ticket exists at `docs/tickets/EPIC-NN.md` and parses against the ticket schema (CONVENTIONS.md §3). If frontmatter is malformed, send a `question` to `project-lead` requesting a fix and STOP.
+1. Call `board_get_ticket(id="EPIC-NN")` to retrieve the Epic. If the ticket is not found or type is not `epic`, send a `question` to `project-lead` and STOP.
 2. Read in order: the Epic body, its `acceptance` list, `docs/project/vision.md`, every file in `artifact_paths`, then `docs/architecture/overview.md`, `data-model.md`, `protocols.md`, and the index of accepted ADRs.
 3. Extract a flat list of **capabilities** the Epic requires. Format: `C-1: <imperative phrase>`. Capabilities must be testable.
 4. For each capability, classify:

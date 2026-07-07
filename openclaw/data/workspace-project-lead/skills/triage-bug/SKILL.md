@@ -1,9 +1,9 @@
 ---
 name: triage-bug
-description: Classify an incoming QA bug report into priority/owner/parent-story; create a BUG-*.md ticket or attach to an existing Story; dispatch handoff to fix owner.
+description: Classify an incoming QA bug report into priority/owner/parent-story; create a BUG-* ticket in board-api; dispatch handoff to fix owner.
 trigger: Inbox contains a `handoff` from `qa` with a path under `docs/qa/bug-reports/`.
 inputs: The QA bug-report markdown file path (from handoff.artifact_paths). The current board state.
-outputs: docs/tickets/BUG-NN.md (or attachment to an existing ticket), updated docs/board.md, outbound handoff to the fix owner, possible escalation to user if P0/P1 threatens deadline.
+outputs: BUG-NN ticket created in board-api, outbound handoff to the fix owner, possible escalation to user if P0/P1 threatens deadline.
 ---
 
 # triage-bug — deterministic procedure
@@ -46,55 +46,33 @@ If the bug affects a Story whose parent Epic is `P0`, bump priority by one level
 
 ## Step 4 — Decide: new ticket or attach to existing
 
-- If there is an open Story with `status ∈ {in_progress, in_review, qa}` whose acceptance directly relates → attach: add a `## Bugs` section to that Story with a link to the QA report, AND still file a BUG-NN ticket as a depends_on for visibility on the board.
+- If there is an open Story with `status ∈ {in_progress, in_review, qa}` whose acceptance directly relates → attach: add a `## Bugs` section to that Story (via `board_update_ticket`) with a reference to the QA report path, AND still file a BUG-NN ticket in board-api as a `depends_on` for visibility.
 - Otherwise → create a standalone BUG-NN ticket.
 
-## Step 5 — Create BUG-NN.md
+## Step 5 — Create BUG-NN in board-api
 
-Next id: `BUG-NN` = (count of existing `BUG-*.md` files) + 1.
+Query board-api for the next bug id: count existing tickets of type `bug` and use `BUG-` + (count + 1), zero-padded to two digits (e.g. `BUG-01`).
 
-```yaml
----
-id: BUG-NN
-type: bug
-title: <bug summary, ≤10 words, verb-first ("fix …", "prevent …")>
-parent: <STORY-id this bug belongs to, or the Epic if no Story fits>
-owner: <agent id from Step 3>
-status: ready
-priority: <from Step 2>
-estimate: S
-created: <ISO>
-acceptance:
-  - "Steps to reproduce in <qa-report-path> no longer reproduce"
-  - "Regression test added (qa owns)"
-depends_on: []
-blocks: []
----
+Call:
 
-## Report
-
-Source: `<docs/qa/bug-reports/...md>`
-
-## Summary
-
-<one-line>
-
-## Steps to reproduce
-
-<copy from QA report>
-
-## Expected
-
-<copy>
-
-## Actual
-
-<copy>
-
-## Triage notes
-
-- Priority derived from QA severity=<…>, reproducibility=<…>, parent Epic priority=<…>.
-- Owner chosen: <agent> because <reason>.
+```
+board_create_ticket({
+  id: "BUG-NN",
+  type: "bug",
+  title: "<bug summary, ≤10 words, verb-first ('fix …', 'prevent …')>",
+  parent: "<STORY-id this bug belongs to, or the Epic if no Story fits>",
+  owner: "<agent id from Step 3>",
+  status: "backlog",
+  priority: "<P0|P1|P2|P3 from Step 2>",
+  estimate: "S",
+  acceptance: [
+    "Steps to reproduce in <qa-report-path> no longer reproduce",
+    "Regression test added (qa owns)"
+  ],
+  depends_on: [],
+  blocks: [],
+  body: "Source: <docs/qa/bug-reports/...md>\n\n## Summary\n<one-line>\n\n## Steps to reproduce\n<copy from QA report>\n\n## Expected\n<copy>\n\n## Actual\n<copy>\n\n## Triage notes\n- Priority derived from QA severity=<…>, reproducibility=<…>, parent Epic priority=<…>.\n- Owner chosen: <agent> because <reason>."
+})
 ```
 
 ## Step 6 — Deadline impact check
@@ -114,7 +92,6 @@ Write `outbox/<ISO>-<owner>-handoff.json`:
   "to": "<owner>",
   "ticket_id": "BUG-NN",
   "artifact_paths": [
-    "docs/tickets/BUG-NN.md",
     "<docs/qa/bug-reports/...md>"
   ],
   "summary": "<bug summary>; priority <P>; QA repro provided.",
@@ -128,20 +105,20 @@ Write `outbox/<ISO>-<owner>-handoff.json`:
 
 Append to `docs/handoff-log.md`.
 
-## Step 8 — Update board
+## Step 8 — Transition ticket to ready
 
-In `docs/board.md`, add a row under `## Bugs`:
-
-```
-| BUG-NN | <title> | ready | <P> | <owner> | <ISO> |
-```
-
-If a Story status moved to `blocked` because of this bug, update it.
-
-## Step 9 — Commit
+After dispatching the handoff, update the ticket status in board-api:
 
 ```
-git add docs/tickets/BUG-NN.md docs/board.md docs/handoff-log.md
+board_update_ticket({ id: "BUG-NN", status: "ready" })
+```
+
+If a Story status must move to `blocked` because of this bug, update it via `board_update_ticket` as well.
+
+## Step 9 — Commit handoff log
+
+```
+git add docs/handoff-log.md
 git commit -m "[BUG-NN] Triage <summary> (P<n>, owner=<agent>)"
 git push
 ```
@@ -156,7 +133,7 @@ Write `outbox/<ISO>-qa-handoff.json` acknowledgement:
   "from": "project-lead",
   "to": "qa",
   "ticket_id": "BUG-NN",
-  "artifact_paths": ["docs/tickets/BUG-NN.md"],
+  "artifact_paths": [],
   "summary": "Triaged: priority <P>, owner <agent>. Await fix; please prepare regression test.",
   "acceptance": ["qa drafts regression test referencing BUG-NN once fix is in_review"],
   "blocking_questions": []
@@ -165,6 +142,6 @@ Write `outbox/<ISO>-qa-handoff.json` acknowledgement:
 
 ## On-error
 
-- Multiple Stories plausibly affected → file BUG ticket against the deepest-parent Story; mention the other Story ids in body.
+- Multiple Stories plausibly affected → file BUG ticket against the deepest-parent Story; mention the other Story ids in the `body` field.
 - Owner agent in STANDBY (no project) → impossible if onboarded; if it happens, escalate to user immediately.
 - Bug repro relies on production data → ask qa for a sanitized repro before assigning fix owner.

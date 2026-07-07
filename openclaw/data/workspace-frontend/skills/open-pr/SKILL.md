@@ -2,8 +2,8 @@
 name: open-pr
 description: Open a PR for the current branch using the FE PR template (with the UI conformance section) and hand off to reviewer.
 trigger: State 6 — OPEN_PR, after self-review passes.
-inputs: Current branch; docs/tickets/<TICKET-ID>.md; tokens-lint output; axe-check output; states matrix evidence; Figma frame links.
-outputs: An open PR on the project repo with the FE template body; outbox/<ISO>-reviewer-handoff.json; ticket status moved to in_review.
+inputs: Current branch; ticket data from board-api; tokens-lint output; axe-check output; states matrix evidence; Figma frame links.
+outputs: An open PR on the project repo with the FE template body; outbox/<ISO>-reviewer-handoff.json; ticket status moved to in_review via board_transition_ticket.
 ---
 
 # open-pr
@@ -21,7 +21,7 @@ outputs: An open PR on the project repo with the FE template body; outbox/<ISO>-
 
 ```
 ## Ticket
-<TICKET-ID> — <link to docs/tickets/<TICKET-ID>.md>
+<TICKET-ID>
 
 ## Acceptance (verbatim from ticket)
 - [ ] criterion 1
@@ -69,7 +69,7 @@ outputs: An open PR on the project repo with the FE template body; outbox/<ISO>-
 
 6. **Open the PR** against `main` via the git host CLI (`gh pr create`, `glab mr create`, etc., per project). Capture the PR URL.
 
-7. **Update ticket frontmatter.** Set `status: in_review`. Commit on the docs repo with subject `[<TICKET-ID>] in review — <PR URL>`. Push.
+7. **Transition ticket status.** Call `board_transition_ticket(ticket_id=<TICKET-ID>, to=in_review)`.
 
 8. **Send `handoff` to reviewer.** Write `outbox/<ISO>-reviewer-handoff.json`:
 
@@ -79,7 +79,7 @@ outputs: An open PR on the project repo with the FE template body; outbox/<ISO>-
   "from": "frontend",
   "to": "reviewer",
   "ticket_id": "<TICKET-ID>",
-  "artifact_paths": ["<PR URL>", "docs/tickets/<TICKET-ID>.md", "<P-NN paths>"],
+  "artifact_paths": ["<PR URL>", "<P-NN paths>"],
   "summary": "<one-line>; tokens-lint=0, axe=0, all 5 states covered.",
   "acceptance": ["reviewer verdict within 1 cycle"],
   "blocking_questions": []

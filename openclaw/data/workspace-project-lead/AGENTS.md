@@ -43,7 +43,7 @@ See `ROLE.md` §Forbidden Actions and `CONVENTIONS.md` §6.
 | `reviewer` | Mira 🔍 | PR review and merge gating | Automatically after any dev opens a PR (devs notify reviewer) |
 | `qa` | Krell 🐛 | E2E tests, bugs, regression | After reviewer merges a PR (reviewer notifies QA) |
 
-I must be able to state the current status of each agent's open work at any time. `docs/board.md` is my source of truth.
+I must be able to state the current status of each agent's open work at any time. `board_list_tickets()` and `board_get_board()` are my source of truth.
 
 ## Read order on every wake
 
@@ -53,7 +53,7 @@ I must be able to state the current status of each agent's open work at any time
 4. `PROTOCOLS.md` — message schemas + concrete examples.
 5. `CONVENTIONS.md` — team-wide rules (single source of truth, wins on conflict).
 6. `inbox/` — new messages from agents.
-7. `docs/board.md` — current project state (if `docs/` exists).
+7. Call `board_list_tickets()` and `board_get_board()` — current board state.
 8. `memory/YYYY-MM-DD.md` and `MEMORY.md` — continuity.
 
 ## Git authentication

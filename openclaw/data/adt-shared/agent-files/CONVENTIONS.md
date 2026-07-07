@@ -66,8 +66,6 @@ Each agent clones only the repos it needs into its own workspace:
 
 `docs/` and `code/` are **containers** — the actual clone sits one level inside, named after the repo. `misc/` is for temporary work only.
 
-> **Internal code repo paths** are always relative to the root of the individual cloned repo. A path like `backend/src/` means that the repo cloned at `code/<that-repo-name>/` has a `backend/src/` directory at its root — not that there is a workspace-level `code/backend/` directory. The exact internal layout of every code repo is defined by `architecture/folder-structure.md` in the docs repo. Example paths in skill files are illustrative; always derive real paths from `folder-structure.md`.
-
 > **Docs repo structure** is fixed and canonical. See `DOCS-REPO-STRUCTURE.md` (in `adt-shared/agent-files/`, symlinked into every workspace) for the full directory tree, per-directory ownership, and LLM retrieval rules. Every docs repo must follow that structure exactly.
 
 Cloning rules by role:
@@ -126,7 +124,7 @@ ADT uses **GitLab Flow**. The rules:
 
 ### 2.4 Board API coordination model
 
-ADT uses a central **board-api** service (FastAPI + SQLite, at `http://board-api:3000` on the `adt-internal` Docker network) as the **authoritative structured store** for all tickets. The markdown files at `docs/tickets/*.md` are human-readable mirrors; `docs/board.md` is a rendered snapshot. Neither the markdown files nor `docs/board.md` are the source of truth — board-api is.
+ADT uses a central **board-api** service (FastAPI + SQLite, at `http://board-api:3000` on the `adt-internal` Docker network) as the **sole authoritative store** for all tickets. board-api IS the ticket store. Agents read from and write to board-api only. There are no markdown ticket files. There is no `board.md`. There is no dual-write, no mirroring, no sync.
 
 **Self-assignment protocol:**
 
@@ -136,11 +134,7 @@ Instead of waiting for a `handoff` from `project-lead`, agents in roles `backend
 - Only `project-lead` creates and edits ticket metadata (id, title, type, parent, acceptance, depends_on). Workers read, claim, and transition status only.
 - The claim endpoint enforces: `status == ready`, `claimed_by IS NULL`, and all `depends_on` have `status == done`.
 - A `409` response from `board_claim_ticket` means another agent won the race or deps are unmet; re-poll.
-- On every status transition, agents call `board_transition_ticket` **first** (board-api is authoritative), then mirror the new status to `docs/tickets/<ID>.md` frontmatter and commit.
-- `project-lead` regenerates `docs/board.md` from `board_get_board()` on each monitor cycle and heartbeat.
-- If board-api is unreachable, write to markdown only, log a warning, and run `sync-board-api` skill on next cycle.
-
-**Dual-write invariant:** Every status change is written to board-api first, then to markdown. Board-api wins on conflict.
+- On every status transition, agents call `board_transition_ticket` to update board-api. board-api is the only record — no markdown file is updated.
 
 **Role of handoffs in the new model:**
 Handoffs (`handoff`, `question`, `escalation`) remain the protocol for:
@@ -156,32 +150,11 @@ Handoffs are **not** used for routine task assignment to backend, frontend, uiux
 
 ## 3. Ticket schema (frozen)
 
-Every ticket file lives at `docs/tickets/<ID>.md` with this exact frontmatter:
-
-```yaml
----
-id: STORY-07
-type: epic | story | task | bug
-title: <short title>
-parent: EPIC-02            # null for top-level
-owner: backend             # canonical agent id or "unassigned"
-status: backlog | ready | in_progress | in_review | qa | done | blocked
-priority: P0 | P1 | P2 | P3
-estimate: S | M | L | XL
-created: <ISO-8601>
-acceptance:
-  - "criterion 1 (testable)"
-  - "criterion 2"
-depends_on: []
-blocks: []
-# board-api extension fields (read-only; never write these to markdown frontmatter):
-# claimed_by: backend    # set atomically by board_claim_ticket; null until claimed
-# claimed_at: ISO-8601   # timestamp of the atomic claim
----
-<body: context, scope, non-goals, open questions>
-```
+The ticket schema is stored in board-api only. Fields: `id`, `type`, `title`, `parent`, `owner`, `status`, `priority`, `estimate`, `created`, `acceptance` (JSON array), `depends_on` (JSON array of ticket IDs), `blocks` (JSON array), `claimed_by` (set atomically by `board_claim_ticket`; null until claimed), `claimed_at` (ISO-8601 timestamp of the atomic claim), `body` (narrative context), `updated_at`.
 
 State machine: `backlog → ready → in_progress → in_review → qa → done`. `blocked` is a side state.
+
+Use `board_get_ticket(id)` to read any ticket. Use `board_create_ticket` to create (project-lead only). Use `board_transition_ticket` to change status. Never read ticket data from any markdown file.
 
 ---
 
@@ -196,7 +169,7 @@ Messages are JSON files written to `outbox/<ISO>-<to>-<type>.json` and delivered
   "from": "project-lead",
   "to": "architect",
   "ticket_id": "EPIC-02",
-  "artifact_paths": ["docs/tickets/EPIC-02.md", "docs/requirements/Q&A-billing.md"],
+  "artifact_paths": ["docs/requirements/Q&A-billing.md"],
   "summary": "Billing epic — ready for feasibility review",
   "acceptance": ["arch produces feasibility-report-EPIC-02.md within 1 cycle"],
   "blocking_questions": []
@@ -275,7 +248,7 @@ workspace-<agent>/
 5. Scan `inbox/` — anything new
 6. Read `docs/<docs-repo-name>/project/repos.md` if it exists — know the current repo list
 7. Pull all repos you have cloned that have remote changes
-8. Look at `docs/<docs-repo-name>/board.md` for the current state
+8. Call `board_list_tickets()` to check the current board state.
 9. For agents that self-assign (`backend`, `frontend`, `uiux`, `architect`): also call `board_get_ready_tickets(owner=<my-agent-id>)` to check for immediately claimable work.
 
 ---
@@ -290,7 +263,7 @@ workspace-<agent>/
 6. Never bypass the reviewer for shared-branch merges. **Developer agents never self-merge their own PRs, ever.**
 7. Never silently absorb scope creep — escalate.
 8. Never invent acceptance criteria; copy them from the ticket.
-9. Never call `board_claim_ticket` on a ticket not returned by `board_get_ready_tickets`. The ready endpoint enforces dependency resolution server-side. Never bypass it by calling claim directly on a ticket that was not in the ready list. The `409` response is the expected signal — re-poll rather than retry.
+9. Never call `board_claim_ticket` on a ticket not returned by `board_get_ready_tickets`. The ready endpoint enforces dependency resolution server-side. Never bypass it by calling claim directly on a ticket that was not in the ready list.
 10. Never address the user directly unless you are `project-lead`.
 11. Never let a blocked task stop all other work. A blocked task means that specific task is paused; every other unblocked task must continue in parallel.
 12. Never create files or directories at workspace root. All runtime output goes into `docs/`, `code/`, or `misc/` (see §5).

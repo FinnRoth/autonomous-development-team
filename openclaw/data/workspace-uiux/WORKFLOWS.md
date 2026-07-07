@@ -42,15 +42,15 @@ IDLE → CLAIM → INTAKE → PAGE_INVENTORY → FLOWS → WIREFRAMES → COMPON
 - **Entry condition:** A `handoff` from `project-lead` exists in `inbox/` with `ticket_id` pointing to a Story or Epic.
 - **Exit condition:** I have a written acceptance summary in `memory/YYYY-MM-DD.md` and a branch `uiux/<TICKET-ID>-<slug>` checked out on `docs/`.
 - **Actions:**
-  1. Read the ticket file `docs/tickets/<TICKET-ID>.md`. Copy the `acceptance:` block verbatim to memory (CONVENTIONS.md §6.8).
+  1. Call `board_get_ticket(ticket_id=<TICKET-ID>)`. Copy the `acceptance` block verbatim to `memory/YYYY-MM-DD.md` (CONVENTIONS.md §6.8).
   2. Read `docs/requirements/*` referenced in the handoff.
   3. Read `docs/architecture/data-model.md` and `docs/architecture/openapi.yaml`. List every entity and endpoint this Story touches.
-  4. If any data shape is ambiguous → file a `question` to `architect` and **stay in INTAKE** (do not proceed). Update ticket `status: blocked` in docs and call `board_transition_ticket(ticket_id=<id>, status="blocked")`.
-  5. Update ticket `status: in_progress` in docs. Call `board_transition_ticket(ticket_id=<id>, status="in_progress")`. Commit.
+  4. If any data shape is ambiguous → file a `question` to `architect` and **stay in INTAKE** (do not proceed). Call `board_transition_ticket(ticket_id=<id>, status="blocked")`.
+  5. Call `board_transition_ticket(ticket_id=<id>, status="in_progress")`. Commit.
   6. Create branch `uiux/<TICKET-ID>-<slug>` from default branch.
   7. Archive the handoff to `inbox/archive/`.
 - **Output artifacts:** memory entry; ticket status update; new branch.
-- **On-error:** If acceptance criteria are untestable / contradictory → `escalation` to `project-lead`, `severity: high`. Set ticket `status: blocked` in docs and call `board_transition_ticket(ticket_id=<id>, status="blocked")`. Stay in INTAKE until resolved.
+- **On-error:** If acceptance criteria are untestable / contradictory → `escalation` to `project-lead`, `severity: high`. Call `board_transition_ticket(ticket_id=<id>, status="blocked")`. Stay in INTAKE until resolved.
 
 ## 4. PAGE_INVENTORY
 
@@ -157,7 +157,7 @@ IDLE → CLAIM → INTAKE → PAGE_INVENTORY → FLOWS → WIREFRAMES → COMPON
 - **Actions:**
   1. Open PR. Title: `[<TICKET-ID>] UI spec for <slug>`. Body includes the verbatim Acceptance checklist from the ticket (CONVENTIONS.md §7.4).
   2. Write the `handoff` message (schema in PROTOCOLS.md): `from: uiux`, `to: frontend`, `ticket_id`, `artifact_paths` (page files, flow files, `ui-spec.md` pinned commit, `components.md`, `design-tokens.json`).
-  3. Update ticket `status: in_review` in docs and call `board_transition_ticket(ticket_id=<id>, status="in_review")`.
+  3. Call `board_transition_ticket(ticket_id=<id>, status="in_review")`.
   4. Log the handoff in `memory/YYYY-MM-DD.md`.
 - **Output artifacts:** PR; outbox message; ticket status.
 - **On-error:** If `reviewer` requests changes on the docs PR → REVISIONS.

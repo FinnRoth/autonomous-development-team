@@ -13,8 +13,8 @@ This skill is deterministic. Run every step in order. Do not skip. Each step wri
 ### Step 1 — Ticket linkage
 
 1. Read the PR body via `gh pr view <pr_number> --json body --jq .body`.
-2. Search for either `Closes #<ticket-num>`, `Fixes #<ticket-num>`, or a verbatim string `docs/tickets/<TICKET-ID>.md`.
-3. If found → `status: pass, evidence: "<match>", citation: "rules.md §R-001"`.
+2. Search for either `Closes #<ticket-num>`, `Fixes #<ticket-num>`, or a verbatim ticket id string like `TASK-12` or `STORY-09`.
+3. Also call `board_get_ticket(id=<TICKET-ID>)` to verify the ticket exists and is in `in_review` status.
 4. If not found → `status: fail, evidence: "no ticket link", citation: "rules.md §R-001"`.
 
 ### Step 2 — Verbatim acceptance in PR body

@@ -59,7 +59,6 @@ See CONVENTIONS.md §4.1.
   "to": "backend",
   "ticket_id": "BUG-19",
   "artifact_paths": [
-    "docs/tickets/BUG-19.md",
     "docs/qa/session-fixation-repro.md"
   ],
   "summary": "Priority override: pause current work and claim BUG-19 — production-blocking session-fixation report from QA.",
@@ -107,14 +106,13 @@ See CONVENTIONS.md §4.1.
   ],
   "summary": "PR#142 merged into main at 9a3f1b2c. TASK-12 is DONE.",
   "acceptance": [
-    "project-lead transitions TASK-12 to DONE in board-api",
-    "project-lead updates board.md"
+    "project-lead transitions TASK-12 to DONE in board-api"
   ],
   "blocking_questions": []
 }
 ```
 
-My action: transition TASK-12 to DONE, regenerate `docs/board.md`.
+My action: transition TASK-12 to DONE in board-api via `board_transition_ticket`.
 
 ### 1.5 I RECEIVE — handoff from `architect` (ADR ready)
 

@@ -3,7 +3,7 @@ name: open-pr
 description: Push branch, open PR with the full template body, flip ticket to in_review, send handoff to reviewer.
 trigger: OPEN_PR state — self-review passed.
 inputs: TICKET_ID, branch name.
-outputs: remote branch pushed, open PR, docs commit flipping ticket status to in_review, outbox handoff to reviewer (and to architect if .env.example changed).
+outputs: remote branch pushed, open PR, board-api ticket status transitioned to in_review, outbox handoff to reviewer (and to architect if .env.example changed).
 ---
 
 # open-pr
@@ -28,8 +28,7 @@ Deterministic procedure.
 
    ```markdown
    ## Ticket
-   - Local: `docs/tickets/<TICKET-ID>.md`
-   - Board: <remote URL of docs ticket>
+   - Board: call `board_get_ticket(TICKET_ID)` for authoritative ticket data.
 
    ## Summary
    <one to three sentences describing what this PR does, in imperative voice>
@@ -69,14 +68,7 @@ Deterministic procedure.
    - Add labels per project convention (e.g., `backend`, `<TICKET-ID>`).
 
 5. **Flip ticket status**
-   - Edit `docs/tickets/<TICKET-ID>.md` frontmatter: `status: in_review`.
-   - Commit and push:
-     ```sh
-     cd ../docs
-     git add tickets/<TICKET-ID>.md
-     git commit -m "[<TICKET-ID>] in review (PR#<N>)"
-     git push
-     ```
+   Call `board_transition_ticket(ticket_id=TICKET_ID, agent="backend", to="in_review")`.
 
 6. **Send handoff to reviewer**
    - Write `outbox/<ISO>-reviewer-handoff.json` using the schema in PROTOCOLS.md §1.1 with this PR's actual:

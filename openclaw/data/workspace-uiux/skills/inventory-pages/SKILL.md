@@ -2,7 +2,7 @@
 name: inventory-pages
 description: Turn a Story or set of Stories into a deterministic P-NN page list with route and owner-story.
 trigger: WORKFLOWS.md state 3 (PAGE_INVENTORY); also invoked on REVISIONS when a flow reveals a missing page.
-inputs: A ticket id (Story/Epic) OR a comma-separated list. Read access to `docs/tickets/`, `docs/requirements/`, `docs/architecture/data-model.md`, `docs/architecture/openapi.yaml`, `docs/ui/ui-spec.md`, `docs/ui/pages/`.
+inputs: A ticket id (Story/Epic) OR a comma-separated list. Board-api access (board_get_ticket, board_list_tickets). Read access to `docs/requirements/`, `docs/architecture/data-model.md`, `docs/architecture/openapi.yaml`, `docs/ui/ui-spec.md`, `docs/ui/pages/`.
 outputs: One `docs/ui/pages/P-NN.md` per new page (with full frontmatter), plus appended rows to §1 Pages in `docs/ui/ui-spec.md`.
 ---
 
@@ -12,7 +12,7 @@ Deterministic procedure. Do every step. Commit at the end.
 
 ## Steps
 
-1. **Resolve scope.** Read `docs/tickets/<TICKET-ID>.md` for each input ticket. If the ticket is an Epic, also read every Story whose `parent` equals that Epic id.
+1. **Resolve scope.** Call `board_get_ticket(id=<TICKET-ID>)` for each input ticket. If the ticket is an Epic, also call `board_list_tickets(parent=<EPIC-ID>)` to get every Story under it.
 
 2. **Extract user-facing screens.** From the ticket body + acceptance criteria, list every distinct screen the user must reach. Use these heuristics, in order:
    - Each acceptance criterion of the form "User can <verb> ..." implies at least one screen.

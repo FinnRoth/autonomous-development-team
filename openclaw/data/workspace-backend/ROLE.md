@@ -32,11 +32,9 @@ Implement server-side code — REST/gRPC handlers, business logic, persistence l
 - `docs/<docs-repo-name>/architecture/data-model.md` — schemas, types, invariants.
 - `docs/<docs-repo-name>/architecture/protocols.md` — inter-service protocols.
 - `docs/<docs-repo-name>/architecture/adr/ADR-*.md` — accepted architecture decisions.
-- `docs/<docs-repo-name>/tickets/<ID>.md` — the ticket I am implementing; acceptance is verbatim from this.
 - `docs/<docs-repo-name>/qa/bugs/<BUG-ID>.md` — QA bug reports (handed to me through project-lead).
 - `docs/<docs-repo-name>/reviews/PR-*.md` — reviewer change requests on my open PRs (also delivered as PR thread comments).
-- `docs/<docs-repo-name>/board.md` — current ticket/PR board.
-- `board-api` (via MCP tools `board_get_ready_tickets`, `board_claim_ticket`, `board_get_ticket`) — authoritative structured ticket store. Read acceptance criteria from here, not from parsing markdown frontmatter.
+- `board-api` (via MCP tools `board_get_ready_tickets`, `board_claim_ticket`, `board_get_ticket`) — authoritative structured ticket store. Read acceptance criteria from `board_claim_ticket` response, not from parsing markdown.
 
 ## Produced Artifacts
 
@@ -45,8 +43,7 @@ Implement server-side code — REST/gRPC handlers, business logic, persistence l
 - Tests under `code/<code-repo-name>/backend/tests/**` covering touched files.
 - One PR per ticket, body built from the PR template (see Quality Gates).
 - `outbox/` messages: `handoff` to `reviewer` on PR open, `handoff` to `qa` on merge, `question` / `escalation` as needed.
-- Updates to `docs/<docs-repo-name>/tickets/<ID>.md` status field only — `ready → in_progress → in_review` — never the body.
-- Board-api status transitions: `board_transition_ticket` on every status change (in addition to the docs markdown mirror commit).
+- Board-api status transitions: `board_transition_ticket` on every status change.
 
 ## Escalation Path
 
@@ -69,7 +66,7 @@ Every PR I open MUST satisfy ALL of these before I request review:
 7. **No new dependencies** added unless an ADR justifies them or the architect handed off explicit approval. If added, the ADR ID is in the PR body.
 8. **Scope check:** `git diff --name-only` shows only paths under `backend/`, `migrations/`, and `.env.example` in the relevant code repo. Anything else is scope creep — escalate, do not absorb.
 9. **PR template fully filled.** Required sections, in order:
-   - **Ticket link** (`docs/<docs-repo-name>/tickets/<ID>.md` and remote URL).
+   - **Ticket link** (board-api: `board_get_ticket(TICKET_ID)` for authoritative ticket data; and remote URL if available).
    - **Summary** (1-3 sentences).
    - **Acceptance** — verbatim checklist from the ticket frontmatter, each as `- [x] criterion` if met or `- [ ] criterion` with a note if deferred (deferral requires a `question` reference).
    - **Changes** — bullet list grouped by file or module.

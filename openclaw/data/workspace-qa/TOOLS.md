@@ -16,7 +16,7 @@ This file declares which MCP servers Krell uses, and what scopes/paths each is a
   - **Branching:** `qa/<TICKET-ID>-<slug>`.
 - **`docs/` (the docs repo):**
   - **Read:** all paths.
-  - **Write:** `docs/qa/**` (full ownership). May read but never write `docs/tickets/`, `docs/architecture/`, `docs/ui/`, `docs/reviews/`, `docs/project/`, `docs/board.md`.
+  - **Write:** `docs/qa/**` (full ownership). May read but never write `docs/architecture/`, `docs/ui/`, `docs/reviews/`, `docs/project/`. There is no `docs/tickets/` or `docs/board.md` — ticket data is in board-api only.
 
 ### 3. `gh` CLI (or `glab`/`tea` per `GIT_HOST_CLI` env, default `gh`) — NOT an MCP server
 - `gh` CLI (or `glab`/`tea` per `GIT_HOST_CLI` env, default `gh`): host-agnostic git-host commands (PRs, issues, reviews, comments). Token: `GIT_HOST_TOKEN` env var. Invoked via shell-exec, not via MCP.

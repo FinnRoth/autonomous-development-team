@@ -38,8 +38,7 @@ Three message types exist. The schema is frozen — do not add or rename top-lev
   "to": "reviewer",
   "ticket_id": "TASK-12",
   "artifact_paths": [
-    "https://github.com/acme/billing/pull/47",
-    "docs/tickets/TASK-12.md"
+    "https://github.com/acme/billing/pull/47"
   ],
   "summary": "TASK-12 implemented — JWT refresh endpoint + tests. PR #47, head 9a3f1c2.",
   "acceptance": [
@@ -61,7 +60,6 @@ Three message types exist. The schema is frozen — do not add or rename top-lev
   "ticket_id": "STORY-09",
   "artifact_paths": [
     "https://gitea.example.com/acme/billing-app/pulls/14",
-    "docs/tickets/STORY-09.md",
     "docs/ui/ui-spec.md#invoice-list"
   ],
   "summary": "STORY-09: Invoice list view, matching ui-spec.md §invoice-list. PR #14, head c8e0b71.",
@@ -111,7 +109,6 @@ My action: log the bug against my review record (`docs/reviews/review-log.md`), 
   "artifact_paths": [
     "https://github.com/acme/billing/commit/d41e7a09",
     "https://github.com/acme/billing/pull/47#issuecomment-22118",
-    "docs/tickets/TASK-12.md",
     "docs/reviews/review-log.md"
   ],
   "summary": "TASK-12 merged at d41e7a09. Acceptance fully covered in unit tests. QA: run E2E auth-refresh suite.",

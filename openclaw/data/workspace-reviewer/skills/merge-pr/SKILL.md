@@ -66,7 +66,6 @@ This skill is the single chokepoint between approval and trunk. Every step is ma
   "artifact_paths": [
     "<commit-url-or-sha>",
     "<summary_url>",
-    "docs/tickets/<TICKET-ID>.md",
     "docs/reviews/review-log.md"
   ],
   "summary": "<TICKET-ID> merged at <merge-sha-short>. Acceptance fully covered. QA: regress + E2E.",

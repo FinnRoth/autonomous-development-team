@@ -105,7 +105,7 @@ When the user responds, the response goes into the next state's handling (REPLAN
 
 If severity is `high` or `blocker`:
 1. Identify which tickets are blocked by this decision.
-2. Update their `status` to `blocked` in the ticket file frontmatter and in `docs/board.md`.
+2. Call `board_transition_ticket(id=<ticket-id>, agent="project-lead", to="blocked")` for each blocked ticket.
 3. Send a courtesy `question` to each blocked owner: "Paused pending user decision D-NNN. ETA on decision: <when>."
 
 ## Step 9 — Reminders

@@ -11,5 +11,5 @@ Task board API — full access for project-lead (ticket creation + metadata edit
 - `board_list_tickets` — list with filters
 - `board_transition_ticket` — transition status
 - `board_add_comment` — add comment to ticket thread
-- `board_get_board` — full board snapshot (used to regenerate docs/board.md)
+- `board_get_board` — full board snapshot
 - `board_get_deps` — check dependency completion status

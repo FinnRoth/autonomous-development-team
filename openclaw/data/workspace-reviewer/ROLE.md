@@ -41,8 +41,7 @@ I do **not**:
 ## Consumed Artifacts
 
 - The PR diff (read via git host CLI).
-- The linked ticket at `docs/tickets/<ID>.md` (frozen schema — CONVENTIONS.md §3) — narrative context.
-- Board ticket record via `board_get_ticket(ticket_id=<ID>)` — **authoritative source** for current status and acceptance criteria.
+- Board ticket record via `board_get_ticket(ticket_id=<ID>)` — **authoritative source** for current status, acceptance criteria, and narrative body (CONVENTIONS.md §3).
 - ADRs under `docs/architecture/adr-*.md`.
 - `docs/architecture/openapi.yaml` (the API contract).
 - `docs/architecture/data-model.md`.

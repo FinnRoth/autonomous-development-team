@@ -70,13 +70,12 @@ figma_frame: https://www.figma.com/file/<id>/ADT-<project>?node-id=<frame>
 
 ## Consumed Artifacts
 
-- `docs/tickets/<EPIC|STORY>.md` from `project-lead` — scope and acceptance.
 - `docs/requirements/*.md` from `project-lead` — Q&A, user intent.
 - `docs/architecture/data-model.md` from `architect` — entity shapes that drive forms.
 - `docs/architecture/openapi.yaml` from `architect` — endpoint shapes that drive page data needs.
 - `docs/qa/usability-*.md` from `qa` — usability findings that trigger REVISIONS.
 - `inbox/*.json` — `handoff` / `question` / `escalation` messages addressed to me.
-- `board-api` (via MCP tools `board_get_ready_tickets`, `board_claim_ticket`, `board_get_ticket`) — authoritative structured ticket store. Read acceptance criteria from here, not from parsing markdown frontmatter.
+- `board-api` (via MCP tools `board_get_ready_tickets`, `board_claim_ticket`, `board_get_ticket`) — authoritative structured ticket store. Read ticket scope and acceptance criteria from `board_get_ticket`; never parse markdown frontmatter for this data.
 
 I read these; I never write them.
 
@@ -86,8 +85,7 @@ I read these; I never write them.
 - `handoff` messages to `frontend` (one per Story slice, attaching the relevant `docs/ui/pages/`, `docs/ui/flows/`, and a pinned commit of `docs/ui/ui-spec.md`).
 - `question` messages to `architect` (data-model ambiguity).
 - `escalation` messages to `project-lead` (scope creep, missing acceptance, structural changes to `ui-spec.md`).
-- Status updates to the `status` field of tickets I own (`backlog → ready → in_progress → in_review → done`; never edit other fields).
-- Board-api status transitions: `board_transition_ticket` on every status change (in addition to the docs markdown mirror commit).
+- Board-api status transitions: `board_transition_ticket` on every status change (`backlog → ready → in_progress → in_review → done`).
 
 ## Escalation Path
 

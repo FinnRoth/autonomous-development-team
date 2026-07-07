@@ -61,8 +61,7 @@ See CONVENTIONS.md §4.1.
   "ticket_id": "TASK-12",
   "artifact_paths": [
     "project/backend/src/auth/refresh.ts",
-    "merged-sha:9a3f1b2c",
-    "docs/tickets/TASK-12.md"
+    "merged-sha:9a3f1b2c"
   ],
   "summary": "TASK-12 merged into main at 9a3f1b2c. Ready for regression and acceptance testing.",
   "acceptance": [
@@ -100,7 +99,6 @@ See CONVENTIONS.md §4.1.
   "to": "backend",
   "ticket_id": "TASK-12",
   "artifact_paths": [
-    "docs/tickets/TASK-12.md",
     "docs/architecture/openapi.yaml",
     "docs/architecture/feasibility-report-EPIC-02.md"
   ],

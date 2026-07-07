@@ -73,7 +73,6 @@ File: `inbox/2026-06-24T09:00:00Z-architect-handoff.json`
   "to": "architect",
   "ticket_id": "EPIC-02",
   "artifact_paths": [
-    "docs/tickets/EPIC-02.md",
     "docs/project/vision.md",
     "docs/requirements/Q&A-billing.md"
   ],
@@ -116,7 +115,6 @@ File: `inbox/2026-06-24T11:40:00Z-architect-handoff.json`
   "to": "architect",
   "ticket_id": "BUG-44",
   "artifact_paths": [
-    "docs/tickets/BUG-44.md",
     "docs/qa/contract-mismatch-2026-06-23.md"
   ],
   "summary": "QA found FE sends `customerId` but openapi requires `customer_id`. Resolve canonical casing across protocols.md and openapi.yaml.",

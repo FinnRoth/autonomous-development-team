@@ -45,13 +45,12 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
 - **Entry condition:** A ticket is `ready`, owner is `frontend` (or `unassigned` and I'm picking it up via project-lead handoff), and all `depends_on` are `done`.
 - **Exit condition:** Ticket status moved to `in_progress`, branch created and checked out.
 - **Actions:**
-  1. Read `docs/tickets/<ID>.md`. Verify frontmatter is well-formed (CONVENTIONS.md §3). If not, file `escalation` to project-lead and abort.
-  2. Verify every `depends_on` is `status: done`. If not, refuse — leave `ready`, log reason, return to SCAN_INBOX (CONVENTIONS.md §6.9).
+  1. Call `board_claim_ticket(ticket_id=<ID>, agent="frontend")`. On 409, log reason and return to SCAN_INBOX. On 200, extract `acceptance`, `body`, and `depends_on` from the response.
+  2. Verify every `depends_on` is `status: done` (confirmed by board-api response). If not, refuse — leave `ready`, log reason, return to SCAN_INBOX (CONVENTIONS.md §6.9).
   3. Read all `consumed artifacts` listed in `ROLE.md` that the ticket references: `ui-spec.md` § cited, `docs/ui/pages/P-NN.md`, `components.md`, `design-tokens.json`, `openapi.yaml` (if endpoint involved), generated client.
   4. Confirm acceptance is testable from FE. If any acceptance is server-only or untestable, file `escalation` severity=`med` to project-lead.
-  5. Update ticket frontmatter: `status: in_progress`, `owner: frontend`. Commit on the docs repo via a separate small commit (or, per project policy, hand the status flip to project-lead).
-  6. Run `claim-task` skill: create branch `frontend/<TICKET-ID>-<slug>` from `main`, push, set upstream.
-- **Output artifacts:** Branch on `project/`; ticket status update.
+  5. Run `claim-task` skill: create branch `frontend/<TICKET-ID>-<slug>` from `main`, push, set upstream.
+- **Output artifacts:** Branch on `project/`; ticket status update in board-api.
 - **On error:** Branch already exists → reuse if it's mine and clean; otherwise file `escalation` to project-lead.
 
 ---
@@ -125,8 +124,8 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
   1. Push final commits to the branch.
   2. Run `open-pr` skill: PR title `[<TICKET-ID>] <imperative>`, body using the PR template in `ROLE.md` (Ticket → Acceptance verbatim → UI Conformance → Tests → Spec references).
   3. Attach: tokens-lint output (0 violations), axe-check output (0 violations), states-matrix coverage table, Figma frame links.
-  4. Call `board_transition_ticket(ticket_id=<TICKET-ID>, to=in_review)`. Move ticket `status: in_review`, owner stays `frontend`.
-  5. Send `handoff` to `reviewer` with `ticket_id`, `artifact_paths: [PR URL, ticket path, P-NN paths]`, `acceptance: [reviewer verdict within 1 cycle]`.
+  4. Call `board_transition_ticket(ticket_id=<TICKET-ID>, to=in_review)`.
+  5. Send `handoff` to `reviewer` with `ticket_id`, `artifact_paths: [PR URL, P-NN paths]`, `acceptance: [reviewer verdict within 1 cycle]`.
 - **Output artifacts:** PR; `outbox/<ISO>-reviewer-handoff.json`.
 - **On error:** Push rejected → rebase onto `main`, fix conflicts (only in `project/frontend/**`), retry. If conflicts touch areas I don't own, `escalation` to project-lead.
 

@@ -37,7 +37,7 @@ See ROLE.md §Forbidden Actions and CONVENTIONS.md §6 for the full list.
 4. **CONVENTIONS.md** — team-wide rules (symlinked; §1-§15).
 5. **PROTOCOLS.md** — message schemas, addressing, sample sends/receives.
 6. `inbox/` — new `handoff` / `question` / `escalation` messages.
-7. `docs/board.md` — overall project state (pull `docs/` first if I clone it).
+7. Call `board_list_tickets(status="in_review")` — see what PRs are ready for review.
 8. `docs/reviews/rules.md` — my own checklist, the authoritative source of "Required" citations.
 
 ## Where to find what

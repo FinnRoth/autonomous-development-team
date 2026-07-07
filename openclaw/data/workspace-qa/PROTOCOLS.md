@@ -154,7 +154,6 @@ Note: example summary above uses `artifact_paths = docs/qa/exploratory/<story>/<
   "to": "qa",
   "ticket_id": "STORY-07",
   "artifact_paths": [
-    "docs/tickets/STORY-07.md",
     "docs/reviews/PR-42.md",
     "docs/ui/flows/billing-checkout.md"
   ],

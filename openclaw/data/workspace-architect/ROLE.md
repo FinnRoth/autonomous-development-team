@@ -48,12 +48,11 @@ In code repos (`code/<repo-name>/`):
 ## Consumed Artifacts
 
 - `docs/<docs-repo-name>/project/vision.md` and `docs/<docs-repo-name>/requirements/Q&A-onboarding.md` — for `bootstrap-stack`.
-- `docs/<docs-repo-name>/tickets/EPIC-*.md` — to start `architect-feasibility`.
-- `docs/<docs-repo-name>/tickets/STORY-*.md` and `TASK-*.md` — to identify needed contract changes.
+- `board_get_ticket(id)` — read Epic tickets to start `architect-feasibility`; read Story/Task tickets to identify needed contract changes. Use board-api as the authoritative source; do not parse markdown frontmatter.
+- `board_get_ready_tickets(owner="architect")` / `board_list_tickets()` — discover work assigned to me.
 - `docs/<docs-repo-name>/ui/ui-spec.md` (and child UI flows) — to verify data-model and API alignment.
 - Reviewer escalations forwarded by `project-lead` — to confirm or repair contract drift.
 - QA contract-mismatch reports forwarded by `project-lead`.
-- `board-api` (via MCP tools `board_get_ready_tickets`, `board_claim_ticket`, `board_get_ticket`) — authoritative structured ticket store. Read acceptance criteria from here, not from parsing markdown frontmatter.
 
 ## Produced Artifacts
 
@@ -64,7 +63,7 @@ In code repos (`code/<repo-name>/`):
 - Generated contracts in `code/<repo-name>/.architecture/contracts/`.
 - Updated `project/repos.md` after EPIC-01 user confirmation.
 - `handoff` replies and `question` replies in `outbox/`.
-- Board-api status transitions: `board_transition_ticket` on every status change (in addition to the docs markdown mirror commit).
+- Board-api status transitions: `board_transition_ticket` on every status change.
 
 ## EPIC-01 repo-creation procedure
 

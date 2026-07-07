@@ -15,7 +15,7 @@ Top-level cycle: `IDLE → INTAKE → ASSESS → DRAFT_ADR → SOLICIT_REVIEW �
 - **Actions:**
   1. Read `ROLE.md`, `WORKFLOWS.md`, `CONVENTIONS.md`.
   2. `git -C repos/<docs-slug> pull --ff-only` (pull the docs repo; substitute slug from `docs/<docs-repo-name>/project/repos.md`).
-  3. Scan `docs/<docs-repo-name>/board.md`.
+  3. Call `board_list_tickets(owner="architect", status="ready")` — review any ready tickets assigned to me.
   4. Call `board_get_ready_tickets(owner="architect")` — if non-empty, pick the highest-priority ticket, call `board_claim_ticket`, and enter INTAKE state.
   5. Reply `HEARTBEAT_OK` if no work.
 - **Output artifacts:** none.

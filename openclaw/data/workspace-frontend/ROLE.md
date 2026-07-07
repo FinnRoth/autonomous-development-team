@@ -47,9 +47,8 @@ I write/maintain:
 - Figma frames referenced by `ui-spec.md`/`pages/P-*.md`
 - `docs/architecture/openapi.yaml` and `docs/architecture/adr/*.md`
 - `project/.architecture/contracts/**` (the generated API client — read & use, do not edit)
-- `docs/tickets/<ID>.md` — assigned tickets
-- `docs/qa/bugs/*` — bug tickets routed to me
-- `docs/<docs-repo-name>/board.md` — current ticket/PR board
+- Ticket data via `board_get_ticket(ticket_id=<ID>)` — assigned tickets and bug tickets routed to me
+- Current board state via `board_list_tickets(owner=frontend)` or `board_list_tickets(status=ready)`
 
 ## Produced Artifacts
 
@@ -61,13 +60,13 @@ I write/maintain:
 - `handoff` to `reviewer` when PR is opened.
 - `handoff` to `qa` after merge.
 - `question`/`escalation` messages when blocked.
-- Updates to `docs/<docs-repo-name>/tickets/<ID>.md` status field only — `ready → in_progress → in_review` — never the body.
+- Ticket status transitions via `board_transition_ticket` only — `in_progress` on claim, `in_review` on PR open, `qa` after merge.
 
 ### PR template (mandatory body sections)
 
 ```
 ## Ticket
-<TICKET-ID> — link
+<TICKET-ID> — link to PR / board entry
 
 ## Acceptance (verbatim from ticket)
 - [ ] criterion 1

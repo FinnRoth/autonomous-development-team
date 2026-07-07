@@ -10,10 +10,8 @@ The structure is designed for LLM retrieval: predictable paths, one concern per 
 
 ```
 <docs-repo-name>/
-├── board.md                  ← current ticket board (project-lead writes, all agents read)
 ├── handoff-log.md            ← append-only log of every agent-to-agent handoff (project-lead writes)
 ├── project/                  ← project-level metadata (project-lead owns)
-├── tickets/                  ← all tickets (project-lead owns)
 ├── requirements/             ← Q&A transcripts from user interrogation (project-lead owns)
 ├── architecture/             ← system design artefacts (architect owns)
 ├── ui/                       ← UI/UX specifications (uiux owns)
@@ -21,7 +19,7 @@ The structure is designed for LLM retrieval: predictable paths, one concern per 
 └── qa/                       ← test plans, cases, bug reports (qa owns)
 ```
 
-`board.md` and `handoff-log.md` are at root because every agent reads them on wake. They must never be nested.
+`handoff-log.md` is at root because every agent reads it on wake. It must never be nested. Board state is accessed exclusively via board-api MCP tools, not from any markdown file.
 
 ---
 
@@ -40,27 +38,6 @@ project/
 ```
 
 `dev-env.md` lives here (not in a code repo) because it describes the *full stack* — it references multiple code repos and is the single authoritative boot guide for the whole project.
-
----
-
-## `tickets/`
-
-All tickets. Written and owned by `project-lead`. Ticket schema defined in `CONVENTIONS.md §3`.
-
-```
-tickets/
-├── EPIC-01.md
-├── EPIC-02.md
-├── STORY-01.md
-├── STORY-02.md
-├── TASK-01.md
-└── BUG-01.md
-```
-
-Rules:
-- One file per ticket, named exactly `<ID>.md` (uppercase ID, no spaces).
-- No subdirectories — all tickets at the same level so agents can `ls tickets/` and see the full backlog without traversal.
-- Only the `status` field in frontmatter is written by agents other than `project-lead` (developer agents flip it as they claim/complete work).
 
 ---
 
@@ -171,7 +148,7 @@ Rules:
 - `test-plan.md` is written once per project (by `bootstrap-test-plan` skill) and updated when the stack changes.
 - `coverage-matrix.md` has one row per Story and columns for: story id, acceptance criteria count, automated cases, last run status, bugs filed, bugs closed.
 - Case files (`cases/<STORY-ID>.md`) are the single source of truth for what is tested. Each case has a unique id, links to the acceptance criterion it covers, and an `automated: yes/no` flag.
-- Bug report files use the same ticket frontmatter schema as `tickets/BUG-NN.md` (CONVENTIONS.md §3) plus additional QA fields: `severity`, `reproduced_by`, `repro_steps`, `suspected_owner`.
+- Bug report files are stored in board-api (created by project-lead via board_create_ticket). The docs/qa/bug-reports/ directory holds plain-text narrative reports with evidence links; the structured ticket data lives in board-api.
 - Evidence directories are named by bug id so evidence is never orphaned from its bug.
 
 ---
@@ -182,6 +159,6 @@ This structure is optimised for agents that navigate by path inference:
 
 1. **Path = meaning.** An agent reading `architecture/adr/ADR-007-stripe.md` knows exactly what it contains without opening it.
 2. **Flat within directories.** Tickets, ADRs, case files are all one level deep in their directories. No `tickets/epics/` vs `tickets/stories/` split — the ID prefix (`EPIC-`, `STORY-`, etc.) is the discriminator.
-3. **One file, one concern.** `board.md` is only the board. `handoff-log.md` is only the handoff log. Files that mix concerns (e.g. a "status + notes" file) are forbidden.
+3. **One file, one concern.** `handoff-log.md` is only the handoff log. Files that mix concerns (e.g. a "status + notes" file) are forbidden.
 4. **Append-only where possible.** `handoff-log.md`, `review-log.md`, `decision-log.md`, `glossary.md` are append-only. This means an agent can always read the tail to get current state without re-reading the full file.
 5. **Owner is encoded in the directory.** Every agent knows which directories it may write to by reading the owner annotations above. No agent writes outside its owned directories (CONVENTIONS.md §6.1).
