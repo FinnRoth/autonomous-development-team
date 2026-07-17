@@ -108,28 +108,50 @@ detect_litellm() {
   curl -sS -o /dev/null -m 2 "$url" 2>/dev/null
 }
 
-# Generate a bcrypt hash for a given password using node (available in the
-# n8n image, but we need it before the container is running). Falls back to
-# python3's passlib if node isn't available on the host.
-bcrypt_hash() {
-  local password="$1"
-  if command -v node >/dev/null 2>&1; then
-    node -e "
-      const crypto = require('crypto');
-      const bcrypt = (() => { try { return require('bcryptjs'); } catch(e) {} try { return require('bcrypt'); } catch(e) {} return null; })();
-      if (bcrypt) { process.stdout.write(bcrypt.hashSync('$(printf '%s' "$password" | sed "s/'/'\\\\''/g")', 10)); process.exit(0); }
-      // fallback: shell out will handle it
-      process.exit(1);
-    " 2>/dev/null && return 0
-  fi
-  if command -v python3 >/dev/null 2>&1 && python3 -c "import bcrypt" 2>/dev/null; then
-    python3 -c "import bcrypt, sys; sys.stdout.write(bcrypt.hashpw(sys.argv[1].encode(), bcrypt.gensalt(10)).decode())" "$password"
+# Ensure htpasswd is available; prompt to install if missing; exit if declined.
+ensure_htpasswd() {
+  if command -v htpasswd >/dev/null 2>&1; then
     return 0
   fi
-  # Last resort: use a pre-computed hash for the exact password if it matches
-  # a known value, otherwise emit a placeholder and warn.
-  echo "__BCRYPT_PLACEHOLDER__"
-  return 1
+  echo
+  warn "htpasswd not found — it is required to hash the master password."
+  echo "  ${DIM}Install it with one of:${NC}"
+  echo "    macOS:  brew install httpd"
+  echo "    Debian/Ubuntu: sudo apt-get install -y apache2-utils"
+  echo "    RHEL/Fedora:   sudo dnf install -y httpd-tools"
+  echo
+  local reply
+  read -rp "  ${BOLD}Install now? [y/N]${NC} " reply </dev/tty
+  if [[ "$reply" =~ ^[Yy]$ ]]; then
+    if [[ "$(uname)" == "Darwin" ]]; then
+      brew install httpd
+    elif command -v apt-get >/dev/null 2>&1; then
+      sudo apt-get install -y apache2-utils
+    elif command -v dnf >/dev/null 2>&1; then
+      sudo dnf install -y httpd-tools
+    elif command -v yum >/dev/null 2>&1; then
+      sudo yum install -y httpd-tools
+    else
+      fail "No supported package manager found. Install apache2-utils / httpd-tools manually and re-run."
+      exit 1
+    fi
+  else
+    fail "htpasswd is required. Aborting."
+    exit 1
+  fi
+
+  if ! command -v htpasswd >/dev/null 2>&1; then
+    fail "htpasswd still not found after installation attempt. Aborting."
+    exit 1
+  fi
+}
+
+# Generate a bcrypt hash using htpasswd -B (guaranteed bcrypt output).
+bcrypt_hash() {
+  local password="$1"
+  # htpasswd -B -n -b: bcrypt, stdout only, batch (non-interactive).
+  # Output is "user:hash" — strip the "dummy:" prefix.
+  htpasswd -B -n -b dummy "$password" 2>/dev/null | cut -d: -f2
 }
 
 # ─── banner ────────────────────────────────────────────────────────────────
@@ -178,6 +200,9 @@ if [[ ${#MISSING[@]} -gt 0 ]]; then
   fail "Missing tools: ${MISSING[*]}"
   exit 1
 fi
+
+ensure_htpasswd
+ok "htpasswd found"
 
 # ─── [2] configuration ─────────────────────────────────────────────────────
 step "Configuration"
@@ -245,20 +270,17 @@ step "Generating configuration files"
 if [[ -n "$MASTER_PASSWORD" ]]; then
   sub "hashing master password for n8n (bcrypt)…"
   N8N_OWNER_PASSWORD_HASH=$(bcrypt_hash "$MASTER_PASSWORD")
-  if [[ "$N8N_OWNER_PASSWORD_HASH" == "__BCRYPT_PLACEHOLDER__" ]]; then
-    warn "Could not generate bcrypt hash on this host (no node/bcrypt or python/bcrypt found)."
-    warn "n8n will boot but the owner account won't be pre-configured."
-    warn "Log in to http://localhost:${N8N_PORT} and create the owner manually after first boot."
-    N8N_OWNER_PASSWORD_HASH=""
-  else
-    ok "bcrypt hash generated"
+  if [[ -z "$N8N_OWNER_PASSWORD_HASH" ]]; then
+    fail "bcrypt hashing failed. Aborting."
+    exit 1
   fi
+  ok "bcrypt hash generated"
 else
   N8N_OWNER_PASSWORD_HASH=""
 fi
 
 # Escape $ in the bcrypt hash so docker-compose doesn't treat them as variable refs.
-N8N_OWNER_PASSWORD_HASH_ESCAPED="${N8N_OWNER_PASSWORD_HASH//$/$\$}"
+N8N_OWNER_PASSWORD_HASH_ESCAPED="${N8N_OWNER_PASSWORD_HASH//\$/$\$}"
 
 # docker-compose.yml
 sed \
