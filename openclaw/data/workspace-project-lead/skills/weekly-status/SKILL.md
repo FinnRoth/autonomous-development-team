@@ -1,9 +1,9 @@
 ---
 name: weekly-status
-description: Generate a user-facing weekly summary from board-api, handoff-log.md, and decision-log.md; send as a handoff to user.
+description: Generate a user-facing weekly summary from board-api and decision-log.md; deliver to the user via chat.
 trigger: Heartbeat detects 7 days since last weekly-status run; or user asks for status explicitly.
-inputs: board-api (board_get_board, board_list_tickets), docs/handoff-log.md, docs/project/decision-log.md, docs/project/risk-register.md.
-outputs: outbound handoff message to user with the summary; entry in docs/handoff-log.md.
+inputs: board-api (board_get_board, board_list_tickets, board_get_ticket for comment/handoff history), docs/project/decision-log.md, docs/project/risk-register.md.
+outputs: user-facing weekly summary delivered via chat.
 ---
 
 # weekly-status — deterministic procedure
@@ -25,7 +25,7 @@ Call `board_get_board()` to get the full board snapshot and `board_list_tickets(
 
 ## Step 3 — Aggregate handoffs
 
-`git log --since=window_start docs/handoff-log.md` — count entries by from/to pair. Spot any agent that has not produced or received anything in the window (potential stuck agent).
+Read the comment threads on active tickets via `board_get_ticket` (and `board_get_unread` for anything still unhandled). Count handoff comments by author/`to` pair within the window. Spot any agent that has neither posted nor received a comment in the window (potential stuck agent).
 
 ## Step 4 — Aggregate decisions
 
@@ -41,7 +41,7 @@ Read `risk-register.md`. List:
 
 ## Step 6 — Aggregate open escalations to user
 
-Scan `outbox/` for messages with `to: "user"` and `type: "escalation"` that have not yet received a user-channel acknowledgment (tracked in `memory/escalation-state.json`).
+List escalations I have relayed to the user (via chat) that have not yet received a user-channel acknowledgment (tracked in `memory/escalation-state.json`, keyed by decision id from `decision-log.md`).
 
 ## Step 7 — Compose the summary
 
@@ -94,24 +94,7 @@ Constraints:
 
 ## Step 8 — Send
 
-Write `outbox/<ISO>-user-handoff.json`:
-
-```json
-{
-  "type": "handoff",
-  "from": "project-lead",
-  "to": "user",
-  "ticket_id": "weekly-status-<ISO-week>",
-  "artifact_paths": [],
-  "summary": "<headline line>",
-  "acceptance": ["user acknowledges or replies with direction"],
-  "blocking_questions": [
-    "<any decisions you need from user, one per item>"
-  ]
-}
-```
-
-The full markdown body goes in the message body (the OpenClaw gateway carries both structured JSON and a human-readable rendering).
+Deliver the full markdown summary to the user directly in **chat**. I am the only agent that addresses the user, and I do it via chat — not via a board-api comment (`to: "user"` is not valid) and not via a file. If any decisions are needed from the user, list them under "Blocked / your input needed" so the chat message carries both the status and the asks.
 
 ## Step 9 — Update state
 
@@ -122,12 +105,6 @@ Append to `memory/weekly-status-state.json`:
   "last_sent": "<ISO>",
   "week": "<ISO-week>"
 }
-```
-
-Append to `docs/handoff-log.md`:
-
-```
-<ISO> | project-lead → user | handoff | weekly-status-<ISO-week> | "<headline>"
 ```
 
 ## On-error

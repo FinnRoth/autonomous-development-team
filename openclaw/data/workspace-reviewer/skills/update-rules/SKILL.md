@@ -1,19 +1,20 @@
 ---
 name: update-rules
 description: Amend docs/reviews/rules.md after project-lead has approved a rule change via escalation.
-trigger: WORKFLOWS.md side-state RULES_AMENDMENT — invoked when an inbox escalation reply from project-lead approves a rules.md change.
-inputs: escalation_id (the prior escalation I sent that is now approved), proposed_rule_text, rule_action ("add" | "edit" | "retire"), target_rule_id (for edit/retire) or null (for add)
-outputs: updated docs/reviews/rules.md committed and pushed; reply message to project-lead confirming the change.
+trigger: WORKFLOWS.md side-state RULES_AMENDMENT — invoked when an `escalation` comment reply from project-lead (surfaced by board_get_unread) approves a rules.md change.
+inputs: approving_comment_id (the project-lead comment that approves my prior proposal), proposed_rule_text, rule_action ("add" | "edit" | "retire"), target_rule_id (for edit/retire) or null (for add)
+outputs: updated docs/reviews/rules.md committed and pushed; confirmation comment posted to project-lead via board_add_comment.
 ---
 
 ## Procedure
 
 ### Step 1 — Verify the authorization
 
-1. Open the inbox message that triggered this skill.
-2. Verify `from: "project-lead"`, `type: "escalation"`, and that it directly references `<escalation_id>` (in `summary` or `requested_decision`).
-3. Verify the reply's `requested_decision` text matches the rule change I am about to make.
-4. If anything mismatches → ABORT and `question` back to project-lead: "Please confirm rule change for escalation <id> — wording mismatch."
+1. Open the `escalation` comment (fetched via `board_get_unread(agent="reviewer")`) that triggered this skill; note its `comment_id` as `<approving_comment_id>`.
+2. Verify `author: "project-lead"`, `type: "escalation"`, and that its body directly references my prior rule proposal (the `requested_decision: "amend rules.md ..."` text).
+3. Verify the approving comment's requested change matches the rule change I am about to make.
+4. If anything mismatches → ABORT and post a `question` comment back to project-lead: "Please confirm rule change for comment <approving_comment_id> — wording mismatch."
+5. After handling, `board_ack_comment(comment_id=<approving_comment_id>, agent="reviewer")`.
 
 ### Step 2 — Open rules.md
 
@@ -33,7 +34,7 @@ outputs: updated docs/reviews/rules.md committed and pushed; reply message to pr
 ### R-NNN — <one-line title>
 
 **Severity:** Required | Suggested
-**Source:** introduced by escalation <escalation_id> on <ISO date>; approved by project-lead.
+**Source:** introduced via project-lead approval comment <approving_comment_id> on <ISO date>.
 **Rule:** <full rule text>
 **Rationale:** <one paragraph>
 **Examples:**
@@ -46,14 +47,14 @@ outputs: updated docs/reviews/rules.md committed and pushed; reply message to pr
 
 1. Locate `### R-<target_rule_id>`.
 2. Edit the `**Rule:**` and/or `**Rationale:**` block.
-3. Append a `**Revised:**` line: `**Revised:** <ISO date> via escalation <escalation_id>`.
+3. Append a `**Revised:**` line: `**Revised:** <ISO date> via project-lead approval comment <approving_comment_id>`.
 4. Do NOT change the rule id. Do NOT delete any history.
 
 #### If `rule_action == "retire"`:
 
 1. Locate `### R-<target_rule_id>`.
 2. Prepend `~~RETIRED~~ ` to the heading.
-3. Append a `**Retired:**` line: `**Retired:** <ISO date> via escalation <escalation_id>. Reason: <one line>.`.
+3. Append a `**Retired:**` line: `**Retired:** <ISO date> via project-lead approval comment <approving_comment_id>. Reason: <one line>.`.
 4. Never delete the section; retired rules remain visible for citation history.
 
 ### Step 4 — Update the index
@@ -66,24 +67,24 @@ outputs: updated docs/reviews/rules.md committed and pushed; reply message to pr
 ### Step 5 — Commit + push
 
 1. `git -C docs add docs/reviews/rules.md`.
-2. `git -C docs commit -m "[reviewer] rules.md: <add|edit|retire> R-NNN (escalation <escalation_id>)"`.
+2. `git -C docs commit -m "[reviewer] rules.md: <add|edit|retire> R-NNN (approval comment <approving_comment_id>)"`.
 3. `git -C docs push origin <default-branch>`.
 
-### Step 6 — Reply to project-lead
+### Step 6 — Post confirmation comment to project-lead
 
-Compose `outbox/<ISO>-project-lead-escalation.json` as a confirmation:
+Post an `escalation` comment (informational) to project-lead via `board_add_comment`, replying on the same ticket the approval comment was on (`SYSTEM-00` if the amendment had no project ticket):
 
-```json
-{
-  "type": "escalation",
-  "from": "reviewer",
-  "to": "project-lead",
-  "severity": "low",
-  "summary": "Confirmed: rules.md updated per escalation <escalation_id>. Rule R-NNN <added|edited|retired>.",
-  "requested_decision": "none — informational",
-  "options": [],
-  "recommendation": "broadcast change to backend, frontend (via project-lead) so they know about it before next PR."
-}
+```
+board_add_comment(
+  ticket_id="<same-ticket-as-approval-comment>",
+  author="reviewer",
+  to="project-lead",
+  type="escalation",
+  body="severity: low. Informational. Confirmed: rules.md updated per your approval comment "
+       "<approving_comment_id>. Rule R-NNN <added|edited|retired>. requested_decision: none. "
+       "Recommendation: broadcast the change to backend and frontend (via project-lead) so they "
+       "know about it before their next PR."
+)
 ```
 
 ### Step 7 — Exit

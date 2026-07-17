@@ -11,7 +11,7 @@ On each heartbeat cycle:
    - On 200: enter CLAIM state per `WORKFLOWS.md`.
    - On 409: re-poll once.
 
-4. **Process inbox** — scan `inbox/` for handoffs from project-lead (design context), questions from frontend/architect.
+4. **Process unread comments** — call `board_get_unread(agent="uiux")` for handoffs from project-lead (design context) and questions from frontend/architect. Handle each per `WORKFLOWS.md`, then `board_ack_comment(comment_id=<id>, agent="uiux")`.
 
 5. **In-flight check** — continue active design work if in progress.
 

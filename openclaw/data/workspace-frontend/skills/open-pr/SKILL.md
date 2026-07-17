@@ -3,7 +3,7 @@ name: open-pr
 description: Open a PR for the current branch using the FE PR template (with the UI conformance section) and hand off to reviewer.
 trigger: State 6 — OPEN_PR, after self-review passes.
 inputs: Current branch; ticket data from board-api; tokens-lint output; axe-check output; states matrix evidence; Figma frame links.
-outputs: An open PR on the project repo with the FE template body; outbox/<ISO>-reviewer-handoff.json; ticket status moved to in_review via board_transition_ticket.
+outputs: An open PR on the project repo with the FE template body; a `handoff` comment to reviewer via board_add_comment; ticket status moved to in_review via board_transition_ticket.
 ---
 
 # open-pr
@@ -71,24 +71,24 @@ outputs: An open PR on the project repo with the FE template body; outbox/<ISO>-
 
 7. **Transition ticket status.** Call `board_transition_ticket(ticket_id=<TICKET-ID>, to=in_review)`.
 
-8. **Send `handoff` to reviewer.** Write `outbox/<ISO>-reviewer-handoff.json`:
+8. **Post `handoff` comment to reviewer.** Call `board_add_comment`:
 
-```json
-{
-  "type": "handoff",
-  "from": "frontend",
-  "to": "reviewer",
-  "ticket_id": "<TICKET-ID>",
-  "artifact_paths": ["<PR URL>", "<P-NN paths>"],
-  "summary": "<one-line>; tokens-lint=0, axe=0, all 5 states covered.",
-  "acceptance": ["reviewer verdict within 1 cycle"],
-  "blocking_questions": []
-}
 ```
+board_add_comment(
+  ticket_id="<TICKET-ID>",
+  author="frontend",
+  to="reviewer",
+  type="handoff",
+  body="PR#<num> open for <TICKET-ID> — <one-line>; tokens-lint=0, axe=0, all 5 states covered. "
+       "Artifacts: <PR URL>, <P-NN paths>. Requested: reviewer verdict within 1 cycle."
+)
+```
+
+See `PROTOCOLS.md` §S1 for the full body style. A comment is delivered the instant board-api stores it (CONVENTIONS.md §12).
 
 9. **Log in `memory/YYYY-MM-DD.md`** with PR URL, branch, ticket id, ISO timestamp.
 
-10. **Park** — wait for reviewer feedback. Return to SCAN_INBOX.
+10. **Park** — wait for reviewer feedback. Return to SCAN_COMMENTS.
 
 ## Forbidden during this skill
 

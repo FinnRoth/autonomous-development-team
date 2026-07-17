@@ -1,7 +1,7 @@
 ---
 name: bootstrap-stack
 description: ONE-TIME first-project skill. Reads project-lead's onboarding Q&A and produces the foundational ADRs and skeleton architecture docs.
-trigger: project-lead sends a `handoff` with ticket_id starting `BOOTSTRAP-` and artifact_paths including docs/project/onboarding-qna.md. Runs exactly once per project.
+trigger: project-lead posts a `handoff` comment with ticket_id starting `BOOTSTRAP-` referencing docs/project/onboarding-qna.md in the body. Runs exactly once per project.
 inputs:
   - docs/project/onboarding-qna.md (user's answers to PL's intake)
   - docs/project/vision.md (PL's distillation of project intent)
@@ -9,7 +9,7 @@ outputs:
   - docs/architecture/overview.md (initial)
   - docs/architecture/folder-structure.md (initial, with text canonical block)
   - docs/architecture/data-model.md (skeleton with required sections + empty Mermaid)
-  - docs/architecture/api/openapi.yaml (skeleton: info, servers, security schemes, Error schema, /health probe)
+  - docs/architecture/api/<service>/openapi.yaml (one per API-exposing code repo; skeleton: info, servers, security schemes, Error schema, /health probe)
   - docs/architecture/protocols.md (initial)
   - docs/architecture/adr/ADR-001-stack-choice.md (status: proposed)
   - docs/architecture/adr/ADR-002-folder-layout.md (status: proposed)
@@ -19,7 +19,7 @@ outputs:
 
 # Procedure
 
-1. Refuse to run if `docs/architecture/adr/ADR-001-*.md` already exists. This skill is one-time. If it exists, reply with `question` to project-lead asking whether they want a re-bootstrap (which requires explicit ADR supersession).
+1. Refuse to run if `docs/architecture/adr/ADR-001-*.md` already exists. This skill is one-time. If it exists, post a `question` comment to project-lead asking whether they want a re-bootstrap (which requires explicit ADR supersession).
 2. Read `docs/project/onboarding-qna.md` and `docs/project/vision.md` fully. Identify:
    - Domain (e.g., billing, social, marketplace)
    - Required runtimes (backend lang, frontend lang)
@@ -55,21 +55,21 @@ outputs:
     - `## Invariants` (empty)
     - `## ER Diagram` with ` ```mermaid erDiagram ` block containing a comment-only stub.
     - `## Changelog` with initial entry.
-11. Write `docs/architecture/api/openapi.yaml` skeleton:
+11. For each API-exposing code repo confirmed during EPIC-01 (`<service>` = its name in `project/repos.md`), write a `docs/architecture/api/<service>/openapi.yaml` skeleton (a monolith gets one such directory; a microservice project gets one per service):
     - `openapi: 3.1.0`
-    - `info.title` from project name; `info.version: 0.1.0`
+    - `info.title` from the service name; `info.version: 0.1.0`
     - `servers: [{url: http://localhost:8000/v1}]`
     - `components.securitySchemes.bearerAuth` (JWT)
     - `components.schemas.Error` matching protocols.md envelope
     - `paths: /health: get` returning 200 with a tiny schema
 12. Write `docs/architecture/protocols.md` mirroring ADR-003's decisions in human-readable form, with a TOC.
 13. Create `.gitkeep` files in `project/` for every directory in `folder-structure.md` `text canonical` block. Commit on `architect/BOOTSTRAP-skeleton` branch in the `<project>` repo.
-14. Run `validate-openapi` against the skeleton openapi.yaml. Must PASS.
+14. Run `validate-openapi` against every skeleton `api/<service>/openapi.yaml`. Each must PASS.
 15. Run `audit-folder-structure`. Must report `zero-drift`.
 16. Run `generate-contracts`. The skeleton will produce minimal types for `Error` and `/health` only.
 17. Open PRs: one against `<project>-docs` (all docs), one against `<project>` (skeleton + contracts).
-18. Send `handoff` to `reviewer` with all three ADRs and the skeleton docs.
-19. Send `handoff` to `project-lead` summarizing what was bootstrapped; recommend acceptance of all three ADRs before any feature work begins.
+18. Post a `handoff` comment to `reviewer` referencing all three ADRs and the skeleton docs in the body.
+19. Post a `handoff` comment to `project-lead` summarizing what was bootstrapped; recommend acceptance of all three ADRs before any feature work begins.
 20. After PRs are merged and ADRs accepted (per FREEZE state), update each ADR to `status: accepted`.
 21. Append `memory/YYYY-MM-DD.md`: `bootstrap-stack complete → ADR-001/002/003 proposed`.
 22. Refuse to run this skill again on this project from this point forward.

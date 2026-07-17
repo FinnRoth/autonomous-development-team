@@ -3,7 +3,7 @@ name: onboard-project
 description: One-time project intake; gathers vision, users, jobs, deadline, repo list (N repos typed as code/docs), stack preference; scaffolds the docs repo and dispatches first handoff to architect.
 trigger: User initiates the very first project on a fresh template (repos/ does not exist) OR explicitly asks to "start a new project".
 inputs: User chat. Workspace with no repos/ directory.
-outputs: docs/<docs-repo-name>/ scaffold (vision.md, repos.md, glossary.md, risk-register.md, decision-log.md, handoff-log.md), requirements/Q&A-onboarding.md, EPIC-01 ticket created in board-api, outbound handoff to architect.
+outputs: docs/<docs-repo-name>/ scaffold (vision.md, repos.md, glossary.md, risk-register.md, decision-log.md), requirements/Q&A-onboarding.md, EPIC-01 ticket created in board-api, handoff comment to architect on EPIC-01.
 ---
 
 # onboard-project — deterministic procedure
@@ -87,7 +87,6 @@ architecture/      ← architect will own; create empty
 ui/                ← uiux owns; create empty
 reviews/           ← reviewer owns; create empty
 qa/                ← qa owns; create empty
-handoff-log.md
 ```
 
 Move `misc/Q&A-onboarding-draft.md` into the cloned repo at `requirements/Q&A-onboarding.md` and delete the draft.
@@ -177,9 +176,11 @@ _Append-only. Each entry: ISO timestamp, decision id, decider, summary, link to 
 - <ISO> | D-001 | user | Project onboarded; slug=<slug>; stack=<Q8>; deadline=<Q5>; repos=<slugs>. | requirements/Q&A-onboarding.md
 ```
 
-Create `handoff-log.md` with header only.
+Handoff history is not kept in a docs file. Every handoff is a queryable board-api comment (read via `board_get_ticket` / `board_get_unread`); there is no `handoff-log.md`.
 
 ## Step 5 — Create EPIC-01 in board-api
+
+`SYSTEM-00` already exists (seeded automatically by board-api at container startup) — do NOT create it. It is the permanent non-ticket channel for boot-time / cross-cutting escalations.
 
 Call `board_create_ticket` with the following fields:
 
@@ -223,34 +224,28 @@ If push fails, escalate to user via `escalate-to-user` with the git error messag
 
 ## Step 7 — Dispatch first handoff to architect
 
-Write `outbox/<ISO>-architect-handoff.json`:
+Post a `handoff` comment on EPIC-01 addressed to the architect:
 
-```json
-{
-  "type": "handoff",
-  "from": "project-lead",
-  "to": "architect",
-  "ticket_id": "EPIC-01",
-  "artifact_paths": [
-    "docs/<docs-repo-name>/project/vision.md",
-    "docs/<docs-repo-name>/project/repos.md",
-    "docs/<docs-repo-name>/requirements/Q&A-onboarding.md"
-  ],
-  "summary": "Project onboarded. Docs repo is `<docs-repo-name>`. EPIC-01 is registered in board-api (status: ready). Please author ADR-001 (stack), architecture/overview.md, and architecture/folder-structure.md. Propose code repos, then escalate to project-lead for user confirmation before creating them.",
-  "acceptance": [
-    "ADR-001 exists and is approved",
-    "architecture/overview.md exists",
-    "architecture/folder-structure.md exists with proposed code repo layout",
-    "User has confirmed code repos via project-lead escalation",
-    "All confirmed code repos created and contain README + .gitignore",
-    "project/repos.md updated with all confirmed repos"
-  ],
-  "blocking_questions": []
-}
+```
+board_add_comment(
+  ticket_id="EPIC-01",
+  author="project-lead",
+  to="architect",
+  type="handoff",
+  body="Project onboarded. Docs repo is `<docs-repo-name>`. EPIC-01 is registered in board-api "
+       "(status: ready). Artifacts: docs/<docs-repo-name>/project/vision.md, "
+       "docs/<docs-repo-name>/project/repos.md, docs/<docs-repo-name>/requirements/Q&A-onboarding.md. "
+       "Please author ADR-001 (stack), architecture/overview.md, and architecture/folder-structure.md, "
+       "then propose the code repos and escalate to project-lead for user confirmation before creating them. "
+       "Acceptance: (1) ADR-001 exists and is approved; (2) architecture/overview.md exists; "
+       "(3) architecture/folder-structure.md exists with the proposed code-repo layout; "
+       "(4) user has confirmed the code repos via a project-lead escalation; "
+       "(5) all confirmed code repos are created and contain a README + .gitignore; "
+       "(6) project/repos.md is updated with all confirmed repos."
+)
 ```
 
-Call `sessions_send` with `to: "architect"` and the JSON payload (see CONVENTIONS.md §12).
-Append to `docs/<docs-repo-name>/handoff-log.md`. Commit and push the log update.
+The comment is delivered the instant board-api stores it; the architect sees it on its next heartbeat via `board_get_unread` (CONVENTIONS.md §12).
 
 ## Step 8 — Confirm with user
 

@@ -15,12 +15,12 @@ IDLE → CLAIM → INTAKE → PAGE_INVENTORY → FLOWS → WIREFRAMES → COMPON
 
 ## 1. IDLE
 
-- **Entry condition:** No active Story/Epic assigned to me. `inbox/` empty of unhandled messages.
-- **Exit condition:** A `handoff` from `project-lead` lands in `inbox/` with a Story or Epic ticket id; OR a `handoff` from `qa` with a usability finding (→ REVISIONS); OR a `question` from `frontend` (→ REVISIONS or answer directly).
+- **Entry condition:** No active Story/Epic assigned to me. No unhandled comments from `board_get_unread`.
+- **Exit condition:** A `handoff` comment from `project-lead` addressed to me with a Story or Epic ticket id; OR a `handoff` comment from `qa` with a usability finding (→ REVISIONS); OR a `question` comment from `frontend` (→ REVISIONS or answer directly).
 - **Actions:**
   1. Run session startup (read `ROLE.md`, `WORKFLOWS.md`, `CONVENTIONS.md`, `PROTOCOLS.md`).
   2. `git -C docs/ pull --ff-only`.
-  3. Scan `inbox/`. If empty, write a one-line entry to `memory/YYYY-MM-DD.md` and stop.
+  3. Call `board_get_unread(agent="uiux")`. Handle each comment addressed to me, then `board_ack_comment(comment_id=<id>, agent="uiux")`. If none, write a one-line entry to `memory/YYYY-MM-DD.md` and stop.
   4. If `docs/` does not exist → STANDBY (CONVENTIONS.md §9).
 - **Output artifacts:** none (or a memory entry).
 - **On-error:** if `git pull` fails (merge conflict in `docs/ui/**`), enter REVISIONS to resolve before doing anything else.
@@ -39,18 +39,18 @@ IDLE → CLAIM → INTAKE → PAGE_INVENTORY → FLOWS → WIREFRAMES → COMPON
 
 ## 3. INTAKE
 
-- **Entry condition:** A `handoff` from `project-lead` exists in `inbox/` with `ticket_id` pointing to a Story or Epic.
+- **Entry condition:** A `handoff` comment from `project-lead` addressed to me with `ticket_id` pointing to a Story or Epic.
 - **Exit condition:** I have a written acceptance summary in `memory/YYYY-MM-DD.md` and a branch `uiux/<TICKET-ID>-<slug>` checked out on `docs/`.
 - **Actions:**
   1. Call `board_get_ticket(ticket_id=<TICKET-ID>)`. Copy the `acceptance` block verbatim to `memory/YYYY-MM-DD.md` (CONVENTIONS.md §6.8).
-  2. Read `docs/requirements/*` referenced in the handoff.
-  3. Read `docs/architecture/data-model.md` and `docs/architecture/openapi.yaml`. List every entity and endpoint this Story touches.
-  4. If any data shape is ambiguous → file a `question` to `architect` and **stay in INTAKE** (do not proceed). Call `board_transition_ticket(ticket_id=<id>, status="blocked")`.
+  2. Read `docs/requirements/*` referenced in the handoff comment.
+  3. Read `docs/architecture/data-model.md` and `docs/architecture/api/<service>/openapi.yaml`. List every entity and endpoint this Story touches.
+  4. If any data shape is ambiguous → post a `question` comment to `architect` and **stay in INTAKE** (do not proceed). Call `board_transition_ticket(ticket_id=<id>, status="blocked")`.
   5. Call `board_transition_ticket(ticket_id=<id>, status="in_progress")`. Commit.
   6. Create branch `uiux/<TICKET-ID>-<slug>` from default branch.
-  7. Archive the handoff to `inbox/archive/`.
+  7. `board_ack_comment(comment_id=<id>, agent="uiux")` for the handoff comment.
 - **Output artifacts:** memory entry; ticket status update; new branch.
-- **On-error:** If acceptance criteria are untestable / contradictory → `escalation` to `project-lead`, `severity: high`. Call `board_transition_ticket(ticket_id=<id>, status="blocked")`. Stay in INTAKE until resolved.
+- **On-error:** If acceptance criteria are untestable / contradictory → post an `escalation` comment to `project-lead`, `severity: high`. Call `board_transition_ticket(ticket_id=<id>, status="blocked")`. Stay in INTAKE until resolved.
 
 ## 4. PAGE_INVENTORY
 
@@ -153,26 +153,26 @@ IDLE → CLAIM → INTAKE → PAGE_INVENTORY → FLOWS → WIREFRAMES → COMPON
 ## 12. HANDOFF
 
 - **Entry condition:** All quality gates 1–10 from `ROLE.md` pass.
-- **Exit condition:** A PR is open on `<project>-docs` for branch `uiux/<TICKET-ID>-<slug>`, AND an `outbox/<ISO>-frontend-handoff.json` is written, AND ticket `status: in_review`.
+- **Exit condition:** A PR is open on `<project>-docs` for branch `uiux/<TICKET-ID>-<slug>`, AND a `handoff` comment to `frontend` is posted via `board_add_comment`, AND ticket `status: in_review`.
 - **Actions:**
   1. Open PR. Title: `[<TICKET-ID>] UI spec for <slug>`. Body includes the verbatim Acceptance checklist from the ticket (CONVENTIONS.md §7.4).
-  2. Write the `handoff` message (schema in PROTOCOLS.md): `from: uiux`, `to: frontend`, `ticket_id`, `artifact_paths` (page files, flow files, `ui-spec.md` pinned commit, `components.md`, `design-tokens.json`).
+  2. Post the `handoff` comment (schema in PROTOCOLS.md): `board_add_comment(ticket_id=<TICKET-ID>, author="uiux", to="frontend", type="handoff", body=...)` — the body names the page files, flow files, `ui-spec.md` pinned commit, `components.md`, and `design-tokens.json`.
   3. Call `board_transition_ticket(ticket_id=<id>, status="in_review")`.
   4. Log the handoff in `memory/YYYY-MM-DD.md`.
-- **Output artifacts:** PR; outbox message; ticket status.
+- **Output artifacts:** PR; handoff comment; ticket status.
 - **On-error:** If `reviewer` requests changes on the docs PR → REVISIONS.
 
 ## 13. REVISIONS
 
-- **Entry condition:** Any of: `question` from `frontend`; `handoff` from `qa` with usability finding; `escalation` resolution from `project-lead` requiring spec change; `reviewer` change request on my PR; merge conflict on `docs/ui/**`.
-- **Exit condition:** Triggering issue resolved AND quality gates still pass AND a fresh `handoff` (if recipients are blocked) is sent.
+- **Entry condition:** Any of: `question` comment from `frontend`; `handoff` comment from `qa` with usability finding; `escalation` resolution from `project-lead` requiring spec change; `reviewer` change request on my PR; merge conflict on `docs/ui/**`.
+- **Exit condition:** Triggering issue resolved AND quality gates still pass AND a fresh `handoff` comment (if recipients are blocked) is posted.
 - **Actions:**
   1. Classify the trigger: which state's artifact needs to change?
   2. Return to the **earliest** state whose artifact is affected (e.g., a new component → COMPONENT_PASS; a missing flow error branch → FLOWS).
   3. Re-run states forward from there. Re-run `lint-ui-spec` and `tokens-validate` before exiting.
-  4. If a `question` from `frontend` can be answered without changing artifacts, reply with a `question`-shaped response and stay in REVISIONS only long enough to log the answer in `§8 Open questions`.
-- **Output artifacts:** updated artifacts; possibly a fresh `handoff` message.
-- **On-error:** If REVISIONS reveals a true scope conflict → `escalation` to `project-lead`, return to IDLE after resolution.
+  4. If a `question` comment from `frontend` can be answered without changing artifacts, reply with a follow-up comment and stay in REVISIONS only long enough to log the answer in `§8 Open questions`. `board_ack_comment` the original.
+- **Output artifacts:** updated artifacts; possibly a fresh `handoff` comment.
+- **On-error:** If REVISIONS reveals a true scope conflict → post an `escalation` comment to `project-lead`, return to IDLE after resolution.
 
 ---
 

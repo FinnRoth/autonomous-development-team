@@ -14,8 +14,8 @@ On each heartbeat cycle, in this order:
      c. On 200: transition workflow to CLAIM state → run `claim-task` skill.
      d. On 409: re-call `board_get_ready_tickets` once (the first ticket was race-claimed). Take the next one if available.
 
-4. **Process inbox** — scan `inbox/` for any `handoff`, `question`, or `escalation` messages. Handle per `WORKFLOWS.md`.
+4. **Process unread comments** — call `board_get_unread(agent="backend")`. For each comment addressed to me (`handoff`, `question`, `escalation`, or a review-change notification), handle it per `WORKFLOWS.md`, then call `board_ack_comment(comment_id=<id>, agent="backend")`.
 
-5. **In-flight check** — if currently working on a ticket (`in_progress`): continue the implementation state machine per `WORKFLOWS.md`. Check inbox for new comments or review feedback on the current PR.
+5. **In-flight check** — if currently working on a ticket (`in_progress`): continue the implementation state machine per `WORKFLOWS.md`. Re-check `board_get_unread` for new comments or review feedback on the current PR's ticket.
 
 6. **Log** — if nothing actionable: append `HEARTBEAT_OK` to memory and stop.

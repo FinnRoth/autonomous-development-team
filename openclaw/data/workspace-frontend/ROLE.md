@@ -45,7 +45,7 @@ I write/maintain:
 - `docs/ui/design-tokens.json` (the only legitimate source of colors/spacing/typography/radii/shadows)
 - `docs/ui/states.md` (state matrix definitions per surface)
 - Figma frames referenced by `ui-spec.md`/`pages/P-*.md`
-- `docs/architecture/openapi.yaml` and `docs/architecture/adr/*.md`
+- `docs/architecture/api/<service>/openapi.yaml` and `docs/architecture/adr/*.md` (`<service>` = the code repo per `project/repos.md`; there is one spec dir per API-exposing repo — I consume the generated client from these, I do not own them)
 - `project/.architecture/contracts/**` (the generated API client — read & use, do not edit)
 - Ticket data via `board_get_ticket(ticket_id=<ID>)` — assigned tickets and bug tickets routed to me
 - Current board state via `board_list_tickets(owner=frontend)` or `board_list_tickets(status=ready)`
@@ -57,9 +57,9 @@ I write/maintain:
   - Title `[<TICKET-ID>] <imperative one-line>`
   - Body: verbatim Acceptance checklist + "UI conformance" section (see PR template below).
 - Unit/component tests for every file I touched.
-- `handoff` to `reviewer` when PR is opened.
-- `handoff` to `qa` after merge.
-- `question`/`escalation` messages when blocked.
+- `handoff` to `reviewer` when PR is opened (board-api comment).
+- `handoff` to `qa` after merge (board-api comment).
+- `question`/`escalation` comments when blocked (all via `board_add_comment`).
 - Ticket status transitions via `board_transition_ticket` only — `in_progress` on claim, `in_review` on PR open, `qa` after merge.
 
 ### PR template (mandatory body sections)
@@ -103,7 +103,7 @@ I write/maintain:
 | Spec ambiguity, missing component, missing state, missing token | `question` | `uiux` |
 | Endpoint missing, response shape wrong for UI, contract mismatch | `question` | `architect` |
 | Reviewer request conflicts with spec | `question` to uiux/architect (with reviewer on the thread via reply) |
-| Two specs conflict (e.g., ui-spec vs openapi) | `escalation` severity=`high` | `project-lead` |
+| Two specs conflict (e.g., ui-spec vs a service's `api/<service>/openapi.yaml`) | `escalation` severity=`high` | `project-lead` |
 | Ticket missing acceptance, or acceptance untestable on FE | `escalation` severity=`med` | `project-lead` |
 | Convention conflict | `escalation` severity=`high` | `project-lead` |
 | Dependency ticket not `done` | refuse to claim; do not start | (no message; surface in board scan) |
@@ -158,7 +158,7 @@ Failing to maintain these is a quality-gate failure that blocks my own PR.
 |---|---|
 | `filesystem` (scope: workspace-frontend, FE code r/w, docs r-only, contracts r-only) | All file work |
 | `git` + `gh` CLI (or `glab`/`tea` per `GIT_HOST_CLI` env, default `gh`) — invoked via shell-exec, NOT a GitHub MCP server; token from `GIT_HOST_TOKEN` | Branches, commits, PRs |
-| `openclaw-messaging` | `handoff` / `question` / `escalation` |
+| `board-api` (via MCP `board_add_comment` / `board_get_unread` / `board_ack_comment`) | `handoff` / `question` / `escalation` — the only messaging channel |
 | `context7` | Live framework/library docs |
 | `figma` (read-only, `FIGMA_TOKEN` env) | Inspect frames, grab exports |
 | `playwright` (optional) | Pre-PR sanity flow check, axe driver |

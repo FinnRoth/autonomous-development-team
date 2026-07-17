@@ -6,8 +6,11 @@
 //      wholesale (recursive-merge only on objects), every agent entry has to
 //      carry all of its fields — otherwise the previously-added workspace/
 //      agentDir/model values are wiped.
-//   2. Enables agent-to-agent messaging so handoffs are delivered via the
-//      `sessions_send` tool, not just written to outbox files.
+//   2. Enables OpenClaw agent-to-agent messaging so project-lead can send a
+//      contentless WAKE NUDGE to a sleeping worker (prompting it to run its
+//      heartbeat and poll board_get_unread sooner). Message CONTENT never
+//      travels this way — all agent-to-agent messages are board-api ticket
+//      comments (CONVENTIONS.md §4/§12). sessions_send carries no payload.
 {
   agents: {
     list: [
@@ -81,9 +84,11 @@
     ],
   },
 
-  // ── Agent-to-agent messaging ──────────────────────────────────────────────
-  // Required so that agents can reach each other via `sessions_send`.
-  // Without this, messages only exist as outbox JSON files and are never delivered.
+  // ── Agent-to-agent messaging (WAKE NUDGE ONLY) ────────────────────────────
+  // Retained so project-lead can nudge a sleeping agent to run its heartbeat.
+  // Message CONTENT is always a board-api comment (CONVENTIONS.md §4) — a nudge
+  // carries no payload. Without this, a newly-assigned urgent ticket would wait
+  // until the worker's next scheduled heartbeat.
   tools: {
     sessions: {
       visibility: 'all',   // every agent can see every other agent's sessions
@@ -91,6 +96,7 @@
     agentToAgent: {
       enabled: true,
       // Explicit allow-list of the 7 ADT agents. 'main' is intentionally excluded.
+      // Used only for wake nudges — not for message delivery (see note above).
       allow: ['project-lead', 'architect', 'backend', 'frontend', 'uiux', 'reviewer', 'qa'],
     },
   },

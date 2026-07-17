@@ -47,8 +47,8 @@ Deterministic procedure. Every item is pass/fail. Any fail returns to IMPLEMENT 
 
 9. **Dependency check**
    - `git diff origin/main..HEAD -- '**/package.json' '**/requirements*.txt' '**/pyproject.toml' '**/go.mod' '**/pom.xml' '**/build.gradle*'`
-   - For every added runtime dependency: assert an ADR ID in `docs/architecture/ADR-*.md` mentions it, OR an explicit architect `handoff` exists in `inbox/archive/` approving it.
-   - Missing justification → file a `question` to architect, mark check as fail.
+   - For every added runtime dependency: assert an ADR ID in `docs/architecture/ADR-*.md` mentions it, OR an explicit architect `handoff` comment approving it exists on the ticket (via board_get_ticket).
+   - Missing justification → post a `question` comment to architect, mark check as fail.
 
 10. **PR template readiness** — confirm I can fill every section:
     - Ticket link.

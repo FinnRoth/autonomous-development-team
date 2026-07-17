@@ -14,7 +14,7 @@ outputs:
 
 # Procedure
 
-1. Read `docs/architecture/data-model.md`. Confirm it has these sections: `## Entities`, `## Relations`, `## Invariants`, `## ER Diagram`, `## Changelog`. If any are missing, FAIL and file an `escalation` (severity `med`) — data-model.md is malformed.
+1. Read `docs/architecture/data-model.md`. Confirm it has these sections: `## Entities`, `## Relations`, `## Invariants`, `## ER Diagram`, `## Changelog`. If any are missing, FAIL and post an `escalation` comment (severity `med`) — data-model.md is malformed.
 2. Snapshot the current Mermaid ER block (between ` ```mermaid erDiagram ` and the closing fence) to a temp variable.
 3. Apply the change request:
    - **Add entity** → append a subsection `### <EntityName>` under `## Entities` with fields table (`name | type | nullable | notes`), and add the entity node to the Mermaid block.

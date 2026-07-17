@@ -15,7 +15,7 @@ Run ONCE per project. Refuse to run if `docs/ui/ui-spec.md` already exists (FAIL
 1. **Read the onboarding context.**
    - `docs/project/onboarding-Q&A.md` (project-lead's notes).
    - `docs/requirements/*.md` if any exist.
-   - `docs/architecture/data-model.md` and `openapi.yaml` if any exist (likely empty at this stage; that is fine).
+   - `docs/architecture/data-model.md` and `docs/architecture/api/<service>/openapi.yaml` if any exist (likely empty at this stage; that is fine).
 
 2. **Pick a personality for the design system** based on the onboarding Q&A. Map answers like this:
    - "B2B / professional / utility" → neutral palette anchored on cool gray; primary `#2563eb` (indigo-600); accent muted; sans family Inter; tight typographic scale.
@@ -179,20 +179,21 @@ Run ONCE per project. Refuse to run if `docs/ui/ui-spec.md` already exists (FAIL
 
 9. **Commit:** `[ONBOARD] uiux skeleton: ui-spec.md, design-tokens.json, components.md, states.md`. Open a PR.
 
-10. **Send a `handoff` to `project-lead`** confirming onboarding:
+10. **Post a `handoff` comment to `project-lead`** confirming onboarding:
 
-    ```json
-    {
-      "type": "handoff",
-      "from": "uiux",
-      "to": "project-lead",
-      "ticket_id": "ONBOARD",
-      "artifact_paths": ["docs/ui/ui-spec.md", "docs/ui/design-tokens.json", "docs/ui/components.md", "docs/ui/states.md"],
-      "summary": "uiux onboarding complete; awaiting first epic/story",
-      "acceptance": ["ui-spec.md skeleton with §0–§8", "design-tokens.json validates", "primitives documented with all 5 states"],
-      "blocking_questions": []
-    }
     ```
+    board_add_comment(
+      ticket_id="SYSTEM-00",
+      author="uiux",
+      to="project-lead",
+      type="handoff",
+      body="uiux onboarding complete; awaiting first epic/story. Artifacts: docs/ui/ui-spec.md, "
+           "docs/ui/design-tokens.json, docs/ui/components.md, docs/ui/states.md. "
+           "Acceptance: ui-spec.md skeleton with §0–§8; design-tokens.json validates; "
+           "primitives documented with all 5 states."
+    )
+    ```
+    (If project-lead created an onboarding ticket for this, post on that ticket id instead of `SYSTEM-00`.)
 
 11. **Mark this skill as run** by writing `docs/ui/.onboarded` (single file with the ISO timestamp). Future invocations FAIL fast on the presence of this file.
 

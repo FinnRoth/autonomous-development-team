@@ -6,7 +6,7 @@ This file declares which MCP servers Krell uses, and what scopes/paths each is a
 
 ### 1. `filesystem` — workspace-qa
 - **Scope:** read/write within `~/.openclaw/workspace-qa/`
-- **Used for:** reading inbox, writing outbox, updating local docs/qa scratchpads before commit, managing memory and skill files.
+- **Used for:** updating local docs/qa scratchpads before commit, managing memory and skill files. (Agent-to-agent messages are board-api comments — see §4.)
 - **Forbidden:** anything outside `workspace-qa/`.
 
 ### 2. `git` — split scopes
@@ -24,9 +24,10 @@ This file declares which MCP servers Krell uses, and what scopes/paths each is a
 - **Used for:** opening PRs that add Playwright suites under `project/qa-tests/`; opening doc PRs that add cases, bug reports, coverage matrix; commenting on bug-report PR threads.
 - **Forbidden:** PRs touching non-qa subtrees; self-approving PRs.
 
-### 4. `openclaw-messaging`
-- **Scope:** inbox/outbox in `workspace-qa/`.
-- **Used for:** receiving handoffs from PL/reviewer/backend/frontend; sending bug-report handoffs and escalations.
+### 4. Messaging — via `board-api` comments
+- **Purpose:** all agent-to-agent messages. Post with `board_add_comment` (fields: `to`, `type` ∈ `handoff|question|escalation|info`, `notify`, `from_ticket`); read with `board_get_unread(agent="qa")`; clear with `board_ack_comment`.
+- **Used for:** receiving handoffs from PL/reviewer/backend/frontend; posting bug-report handoffs (with `notify` for reviewer + project-lead), questions, and escalations.
+- A comment is delivered the instant board-api stores it (CONVENTIONS.md §12). Schemas are frozen — see CONVENTIONS.md §4; my role-specific examples live in `PROTOCOLS.md`.
 
 ### 5. `playwright` — THE KILLER TOOL (required, not optional)
 - **Scope:** drive a real browser against the running app under test.
@@ -44,7 +45,7 @@ This file declares which MCP servers Krell uses, and what scopes/paths each is a
 ### 7. `curl` / generic HTTP MCP — API contract tests (flagged optional)
 - **Scope:** issue raw HTTP requests against the running backend.
 - **Used for:** API-level negative tests (forbidden payloads, malformed JSON, missing auth, wrong content-type) that are awkward to express through a browser.
-- **Status:** request this server be wired if `openapi.yaml` exists and the project exposes an HTTP surface. If absent, Playwright's `request` context is the fallback.
+- **Status:** request this server be wired if an `api/<service>/openapi.yaml` exists and the project exposes an HTTP surface. If absent, Playwright's `request` context is the fallback.
 
 ## Local environment notes
 
@@ -73,7 +74,9 @@ Task board API. Authoritative structured ticket store for ADT.
 - `board_list_tickets` — list tickets with status/owner/type filters (primary poll: `board_list_tickets(status="qa")`)
 - `board_get_ticket` — read full ticket details + acceptance criteria + comments
 - `board_transition_ticket` — transition ticket status (e.g., `qa` → `qa_active` → `done`)
-- `board_add_comment` — add comment or question to ticket thread (used when filing bugs, marking qa-complete, or blocking on a question)
+- `board_add_comment` — post a `handoff`/`question`/`escalation`/`info` comment (the messaging channel); set `to`, `notify`, `from_ticket` (used when filing bugs, marking qa-complete, or blocking on a question)
+- `board_get_unread` — poll for comments addressed to me (heartbeat notification: `board_get_unread(agent="qa")`)
+- `board_ack_comment` — mark a comment read/handled
 - `board_get_board` — full board snapshot
 - `board_get_deps` — check dependency status
 

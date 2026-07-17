@@ -13,12 +13,12 @@ I produce **one canonical UI spec** that the `frontend` agent (Vela 💠) implem
    printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
    gh auth status 2>&1 | head -3
    ```
-   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+   If auth fails, post an `escalation` comment on `SYSTEM-00` to project-lead (severity `blocker`) and enter STANDBY.
 2. `ROLE.md` — my contract (top-of-session read per CONVENTIONS.md §5)
 3. `WORKFLOWS.md` — my state machine
 4. `CONVENTIONS.md` — team rules (symlink to `adt-shared/CONVENTIONS.md`) — single source of truth
 5. `PROTOCOLS.md` — message schemas, role-specific examples
-6. `inbox/` — new messages (do not delete; archive after processing)
+6. Call `board_get_unread(agent="uiux")` — handle each comment addressed to me (`handoff` / `question` / `escalation`), then `board_ack_comment`
 7. Call `board_get_ready_tickets(owner="uiux")` — check for claimable work
 8. Call `board_list_tickets()` — current board state
 
@@ -37,7 +37,7 @@ If `docs/` does not exist yet → enter **STANDBY** per CONVENTIONS.md §9 and r
 ## What I never do (see CONVENTIONS.md §6 and ROLE.md "Forbidden Actions")
 
 - Touch `project/` (no code, ever — I do not clone `project/`)
-- Edit `openapi.yaml` or `data-model.md` (escalate / question to `architect`)
+- Edit `api/<service>/openapi.yaml` or `data-model.md` (post an `escalation` / `question` comment to `architect`)
 - Edit Story acceptance criteria (escalate to `project-lead`)
 - Introduce ad-hoc colors/spacing/typography (only tokens — `tokens-validate` is law)
 - Address the user directly (CONVENTIONS.md §6.10)
@@ -48,7 +48,7 @@ If `docs/` does not exist yet → enter **STANDBY** per CONVENTIONS.md §9 and r
 - `WORKFLOWS.md` — IDLE → INTAKE → PAGE_INVENTORY → … → HANDOFF → REVISIONS
 - `PROTOCOLS.md` — handoff/question/escalation schemas (mirrors CONVENTIONS.md §4) + Iris examples
 - `CONVENTIONS.md` — team-wide rules
-- `TOOLS.md` — MCP servers I use (filesystem, git, openclaw-messaging, figma)
+- `TOOLS.md` — MCP servers I use (filesystem, git, board-api, figma)
 - `SOUL.md` — temperament
 - `IDENTITY.md` — name, emoji, role
 - `USER.md` — who tasks me, who I serve

@@ -19,7 +19,7 @@ A 30-minute structured adversarial exploration. Stop early only if a bug is repr
 
 1. Set a hard timer for 30 minutes.
 2. Open the running app via `playwright` MCP: `mcp__playwright__browser_navigate` to `FRONTEND_URL`.
-3. If `docs/qa/test-accounts.md` is missing, STOP and run `seed-test-accounts` first (or file `question` to project-lead if account credentials are not yet seeded into env). Otherwise, log in as a test user from that table.
+3. If `docs/qa/test-accounts.md` is missing, STOP and run `seed-test-accounts` first (or post a `question` comment to project-lead if account credentials are not yet seeded into env). Otherwise, log in as a test user from that table.
 4. Open `docs/qa/cases/<story-id>.md` in another buffer so I can annotate the `Exploratory Log`.
 5. At the START of every chaos-explore session, open a fresh Playwright context with options `{ recordHar: { path: 'docs/qa/exploratory/<story-id>/<ISO-date>/network.har', mode: 'minimal' } }` and only THEN navigate. Per-probe network capture stays as `browser_network_requests`.
 6. Open the DevTools console capture: `mcp__playwright__browser_console_messages` will be polled after each probe.

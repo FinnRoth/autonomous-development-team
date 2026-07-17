@@ -1,18 +1,20 @@
 ---
 name: validate-openapi
-description: Run swagger-cli validate on the OpenAPI single source of truth, plus enforce naming, version-bump, and breaking-change rules.
-trigger: After any edit to docs/architecture/api/openapi.yaml; also nightly via AUDIT; also before any `generate-contracts` run.
+description: Run swagger-cli validate on every service's OpenAPI single source of truth, plus enforce naming, version-bump, and breaking-change rules.
+trigger: After any edit to a docs/architecture/api/<service>/openapi.yaml; also nightly via AUDIT; also before any `generate-contracts` run.
 inputs:
-  - docs/architecture/api/openapi.yaml
+  - docs/architecture/api/<service>/openapi.yaml (one per API-exposing service; <service> = repo name in project/repos.md)
   - previous version of the same file (git HEAD)
 outputs:
-  - stdout pass/fail with structured findings
+  - stdout pass/fail with structured findings (per service)
   - on fail: a working-notes file at memory/YYYY-MM-DD-openapi-validate.md
 ---
 
 # Procedure
 
-1. Run `swagger-cli validate docs/architecture/api/openapi.yaml`. If exit != 0, capture full stderr and FAIL.
+> Run steps 1–9 **once per service** — loop over every `docs/architecture/api/<service>/openapi.yaml`. A monolith has one; a microservice project has one per service. FAIL if any service's spec fails.
+
+1. Run `swagger-cli validate docs/architecture/api/<service>/openapi.yaml`. If exit != 0, capture full stderr and FAIL.
 2. Confirm OpenAPI version is `3.1.x`. If not, FAIL with message "ADR-003 mandates OpenAPI 3.1; current is <X>".
 3. Confirm top-level `info.version` is bumped relative to HEAD:
    - If the diff against HEAD contains any removed path, removed method, removed required field, or changed response status: require **major** bump.

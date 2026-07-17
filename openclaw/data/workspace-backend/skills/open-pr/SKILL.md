@@ -3,7 +3,7 @@ name: open-pr
 description: Push branch, open PR with the full template body, flip ticket to in_review, send handoff to reviewer.
 trigger: OPEN_PR state — self-review passed.
 inputs: TICKET_ID, branch name.
-outputs: remote branch pushed, open PR, board-api ticket status transitioned to in_review, outbox handoff to reviewer (and to architect if .env.example changed).
+outputs: remote branch pushed, open PR, board-api ticket status transitioned to in_review, handoff comment to reviewer (and to architect if .env.example changed).
 ---
 
 # open-pr
@@ -71,14 +71,17 @@ Deterministic procedure.
    Call `board_transition_ticket(ticket_id=TICKET_ID, agent="backend", to="in_review")`.
 
 6. **Send handoff to reviewer**
-   - Write `outbox/<ISO>-reviewer-handoff.json` using the schema in PROTOCOLS.md §1.1 with this PR's actual:
-     - `ticket_id`
-     - `artifact_paths`: list every changed file plus `PR#<N>`.
-     - `summary`: one-line.
-     - `acceptance`: verbatim from ticket.
-     - `blocking_questions`: any unresolved questions.
+   Post a `handoff` comment on the ticket per PROTOCOLS.md §1.1:
+   ```
+   board_add_comment(
+     ticket_id=TICKET_ID, author="backend", to="reviewer", type="handoff",
+     body="PR#<N> open for <TICKET-ID>. Changed: <every changed file>. "
+          "Acceptance (verbatim from ticket): <criteria>. "
+          "Blocking questions: <any unresolved, or none>."
+   )
+   ```
 
-7. **If `.env.example` changed**, also write `outbox/<ISO>-architect-handoff.json` per PROTOCOLS.md §1.3.
+7. **If `.env.example` changed**, also post a `handoff` comment to `architect` per PROTOCOLS.md §1.3.
 
 8. **Log to memory**
    - PR number, URL, base SHA, head SHA, timestamp.

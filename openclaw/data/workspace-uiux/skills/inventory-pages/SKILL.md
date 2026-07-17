@@ -2,7 +2,7 @@
 name: inventory-pages
 description: Turn a Story or set of Stories into a deterministic P-NN page list with route and owner-story.
 trigger: WORKFLOWS.md state 3 (PAGE_INVENTORY); also invoked on REVISIONS when a flow reveals a missing page.
-inputs: A ticket id (Story/Epic) OR a comma-separated list. Board-api access (board_get_ticket, board_list_tickets). Read access to `docs/requirements/`, `docs/architecture/data-model.md`, `docs/architecture/openapi.yaml`, `docs/ui/ui-spec.md`, `docs/ui/pages/`.
+inputs: A ticket id (Story/Epic) OR a comma-separated list. Board-api access (board_get_ticket, board_list_tickets). Read access to `docs/requirements/`, `docs/architecture/data-model.md`, `docs/architecture/api/<service>/openapi.yaml`, `docs/ui/ui-spec.md`, `docs/ui/pages/`.
 outputs: One `docs/ui/pages/P-NN.md` per new page (with full frontmatter), plus appended rows to §1 Pages in `docs/ui/ui-spec.md`.
 ---
 
@@ -50,7 +50,7 @@ Deterministic procedure. Do every step. Commit at the end.
    Followed by a body with these subsections (all required, even if short):
    - `## Purpose` — one sentence.
    - `## Primary action` — what the user is most likely there to do.
-   - `## Data dependencies` — entities/endpoints from data-model.md / openapi.yaml.
+   - `## Data dependencies` — entities/endpoints from data-model.md / api/<service>/openapi.yaml.
    - `## Components used` — list of component names from `components.md` (may be `TBD` at this state; COMPONENT_PASS fills it).
    - `## Notes` — anything odd.
 
@@ -68,6 +68,6 @@ Deterministic procedure. Do every step. Commit at the end.
 
 ## Failure modes
 
-- Two pages collide on the same route → use a sub-route; if neither sub-route reads right, send an `escalation` to `project-lead` (severity: low).
-- A candidate screen has no clear owner Story → send a `question` to `project-lead`; do NOT invent a Story id.
-- A page implies data not in `data-model.md` → send a `question` to `architect` and stop; the page file may exist as a stub with `figma_frame: TBD` only after the question is resolved.
+- Two pages collide on the same route → use a sub-route; if neither sub-route reads right, post an `escalation` comment to `project-lead` (severity: low).
+- A candidate screen has no clear owner Story → post a `question` comment to `project-lead`; do NOT invent a Story id.
+- A page implies data not in `data-model.md` → post a `question` comment to `architect` and stop; the page file may exist as a stub with `figma_frame: TBD` only after the question is resolved.

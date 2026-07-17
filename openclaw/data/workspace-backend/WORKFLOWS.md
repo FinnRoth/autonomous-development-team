@@ -20,14 +20,14 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Exit condition:** Call `board_get_ready_tickets(owner="backend")` — non-empty result triggers CLAIM state.
 - **Actions:**
   1. Run startup read order (see AGENTS.md).
-  2. Process `inbox/` — for each message: handle or queue; archive to `inbox/archive/YYYY-MM-DD/`.
+  2. Process unread comments — `board_get_unread(agent="backend")`; for each: handle or queue, then `board_ack_comment(comment_id=<id>, agent="backend")`.
   3. `cd repos/<docs-slug> && git pull --ff-only`.
   4. Call `board_get_ready_tickets(owner="backend")`; pick the next ticket per the exit condition.
   5. If no ticket: emit a heartbeat note in `memory/YYYY-MM-DD.md` and remain in IDLE.
 - **Output artifacts:** none on disk beyond memory notes.
 - **On-error:**
-  - `git pull` fails → file `escalation` to `project-lead`, severity `med`, remain in IDLE.
-  - Inbox message malformed → archive to `inbox/malformed/`, log in memory, continue.
+  - `git pull` fails → post `escalation` comment to `project-lead`, severity `med`, remain in IDLE.
+  - Unread comment malformed → `board_ack_comment` it, log in memory, continue.
 
 ---
 
@@ -43,8 +43,8 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   5. Print to my memory log: full ticket body, the acceptance checklist verbatim, and links to consumed artifacts.
 - **Output artifacts:** new local branch.
 - **On-error:**
-  - `depends_on` not done → revert any partial edits, file `escalation` to `project-lead` ("attempted to claim <ID> but <DEP> still <status>"), return to IDLE.
-  - Branch already exists → checkout it; if it has unrelated commits, file `escalation` to `project-lead`.
+  - `depends_on` not done → revert any partial edits, post an `escalation` comment to `project-lead` ("attempted to claim <ID> but <DEP> still <status>"), return to IDLE.
+  - Branch already exists → checkout it; if it has unrelated commits, post an `escalation` comment to `project-lead`.
 
 ---
 
@@ -53,13 +53,13 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Entry condition:** ticket claimed, branch checked out.
 - **Exit condition:** I can describe in writing (in memory) every consumed contract artifact and have identified every file I will touch → move to `IMPLEMENT`.
 - **Actions:**
-  1. Read `docs/<docs-repo-name>/architecture/api/openapi.yaml` — locate every operationId implicated by the acceptance criteria.
+  1. Read `docs/<docs-repo-name>/architecture/api/<service>/openapi.yaml` — locate every operationId implicated by the acceptance criteria (`<service>` = the code repo I'm implementing, per repos.md).
   2. Read `docs/<docs-repo-name>/architecture/data-model.md` — identify entities/migrations needed.
   3. Read all relevant `docs/<docs-repo-name>/architecture/adr/ADR-*.md` (especially stack, persistence, auth).
   4. Read `docs/<docs-repo-name>/architecture/protocols.md` if cross-service.
   5. For every third-party library I will call: `context7` resolve + query for current syntax.
   6. Write to `memory/YYYY-MM-DD.md`: ticket id, file plan (paths I will create/edit), migration plan (if any), open questions.
-  7. If any open question is blocking, file a `question` and transition to `BLOCKED`; otherwise continue.
+  7. If any open question is blocking, post a `question` comment and transition to `BLOCKED`; otherwise continue.
 - **Output artifacts:** plan note in `memory/`.
 - **On-error:**
   - Contract ambiguity → `question` to architect, → BLOCKED.
@@ -80,8 +80,8 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   6. Commit incrementally with `[<ID>] <imperative>` subjects.
 - **Output artifacts:** source under `code/<code-repo-name>/backend/**`, migrations, possibly `.env.example` delta.
 - **On-error:**
-  - Need a new dependency → check ADRs; if uncovered, file `question` to architect, → BLOCKED.
-  - Discover a contract bug → STOP, file `question` to architect, → BLOCKED.
+  - Need a new dependency → check ADRs; if uncovered, post a `question` comment to architect, → BLOCKED.
+  - Discover a contract bug → STOP, post a `question` comment to architect, → BLOCKED.
 
 ---
 
@@ -97,7 +97,7 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   5. If a migration was added, run `migrate up` then `migrate down` then `migrate up` against a scratch DB and assert idempotency.
 - **Output artifacts:** test files under `code/<code-repo-name>/backend/tests/**`; CI-equivalent green log captured in memory.
 - **On-error:**
-  - A pre-existing test fails unrelated to my change → file `escalation` to `project-lead`, do NOT disable, → BLOCKED.
+  - A pre-existing test fails unrelated to my change → post an `escalation` comment to `project-lead`, do NOT disable, → BLOCKED.
   - A test I wrote fails → fix code, not test (unless the test is wrong, in which case fix the test).
 
 ---
@@ -127,9 +127,9 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   2. Build PR body from template (Ticket link, Summary, Acceptance, Changes, Tests, Out-of-scope, Risks) using ticket + commit log.
   3. Open PR via host CLI; title `[<ID>] <imperative>`.
   4. Call `board_transition_ticket(ticket_id=<TICKET-ID>, agent="backend", to="in_review")`.
-  5. Write `outbox/<ISO>-reviewer-handoff.json` per `PROTOCOLS.md`.
-  6. If `.env.example` was changed, also write `outbox/<ISO>-architect-handoff.json` noting the env delta for re-blessing.
-- **Output artifacts:** remote branch, open PR, outbox messages.
+  5. Post a `handoff` comment to reviewer: `board_add_comment(ticket_id=<ID>, author="backend", to="reviewer", type="handoff", ...)` per `PROTOCOLS.md` §1.1.
+  6. If `.env.example` was changed, also post a `handoff` comment to `architect` (§1.3) noting the env delta for re-blessing.
+- **Output artifacts:** remote branch, open PR, board comments.
 - **On-error:** push rejected (branch protection / stale) → `git fetch && git rebase origin/main`, re-run tests, re-push. Repeated failure → `escalation` to project-lead.
 
 ---
@@ -139,7 +139,7 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Entry condition:** PR is open, reviewer assigned.
 - **Exit condition:** reviewer verdict is `approve` AND CI is green → move to `MERGED` (reviewer performs the merge; I do NOT self-merge per CONVENTIONS.md §13).
 - **Actions:** loop:
-  1. Watch `inbox/` and the PR thread (via `gh pr view <num> --comments`) for reviewer comments.
+  1. Watch `board_get_unread(agent="backend")` and the PR thread (via `gh pr view <num> --comments`) for reviewer comments.
   2. **When reviewer posts a review (REQUEST_CHANGES or comments):**
      - Read **every** inline comment and the summary. Do not skip any.
      - Classify each item:
@@ -156,7 +156,7 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
   4. On `approve`: stop loop, mark internal state as approved, **do not merge**. Wait for reviewer to perform the merge.
 - **Output artifacts:** follow-up commits, PR thread replies, optional question/escalation messages.
 - **On-error:**
-  - Reviewer asks for something that contradicts the ADR → file `escalation` to project-lead, citing both the reviewer comment and the ADR section.
+  - Reviewer asks for something that contradicts the ADR → post an `escalation` comment to project-lead, citing both the reviewer comment and the ADR section.
   - Reviewer and I disagree after one back-and-forth → `escalation` to project-lead. I do NOT unilaterally override review comments.
   - CI fails on my fix push → fix CI before re-requesting review. Never re-request review with red CI.
 
@@ -182,20 +182,20 @@ IDLE → CLAIM → SPIKE → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → 
 - **Exit condition:** QA handoff sent, ticket status `qa`, memory archived → return to IDLE.
 - **Actions:**
   1. Call `board_transition_ticket(ticket_id=<TICKET-ID>, agent="backend", to="qa")`.
-  2. Write `outbox/<ISO>-qa-handoff.json` with the merged SHA, the acceptance criteria, and links to changed files.
+  2. Post a `handoff` comment to qa: `board_add_comment(ticket_id=<ID>, author="backend", to="qa", type="handoff", ...)` with the merged SHA, the acceptance criteria, and links to changed files.
   3. Append a post-mortem note to `MEMORY.md` (what was tricky, what I would do differently).
   4. Return to IDLE.
-- **Output artifacts:** qa handoff, memory entry.
-- **On-error:** QA inbox missing → `escalation` to project-lead.
+- **Output artifacts:** qa handoff comment, memory entry.
+- **On-error:** `board_add_comment` fails → retry once, then `escalation` comment to project-lead.
 
 ---
 
 ## BLOCKED (side state)
 
-- **Entry:** any state where I filed a `question` or `escalation` whose answer I need before progressing.
+- **Entry:** any state where I posted a `question` or `escalation` comment whose answer I need before progressing.
 - **Actions while blocked:**
   1. Do not advance the state machine.
-  2. Poll `inbox/` for the reply.
-  3. After 1 cycle without reply, send a follow-up `question` referencing the original.
-  4. After 2 cycles without reply, `escalation` to project-lead.
+  2. Poll `board_get_unread(agent="backend")` for the reply.
+  3. After 1 cycle without reply, post a follow-up `question` comment referencing the original.
+  4. After 2 cycles without reply, post an `escalation` comment to project-lead.
 - **Exit:** reply received → return to the originating state with new context.

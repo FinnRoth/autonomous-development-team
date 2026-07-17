@@ -2,7 +2,7 @@
 name: draft-flow
 description: Turn a textual user-story into a deterministic `docs/ui/flows/F-NN.md` with steps, success, and error branches.
 trigger: WORKFLOWS.md state 4 (FLOWS). Also on REVISIONS when an error branch was missing.
-inputs: A Story id and (optionally) a specific flow name (e.g., "add-payment-method"). Read access to ticket, page files, data-model.md, openapi.yaml.
+inputs: A Story id and (optionally) a specific flow name (e.g., "add-payment-method"). Read access to ticket, page files, data-model.md, api/<service>/openapi.yaml.
 outputs: One `docs/ui/flows/F-NN.md` per flow + appended row(s) to §2 Flows in `ui-spec.md`.
 ---
 

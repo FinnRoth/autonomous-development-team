@@ -4,7 +4,7 @@ description: Produce the first-cut docs/qa/test-plan.md once the project's archi
 trigger: Onboard-handoff from project-lead naming this role for the first time, OR an architect handoff announcing ADR-001 acceptance. Skip (no-op) if docs/qa/test-plan.md already exists at the target schema version.
 inputs:
   - docs/architecture/overview.md (if present)
-  - docs/architecture/openapi.yaml (if present)
+  - docs/architecture/api/<service>/openapi.yaml (per API code repo, if present)
   - docs/architecture/folder-structure.md (if present)
   - board_list_tickets() results (for story-shape sanity)
 outputs:
@@ -22,7 +22,7 @@ Deterministic first-time creation of the top-level QA strategy doc. Run ONCE per
 
 2. **Read architecture inputs (best-effort).** For each of:
    - `docs/architecture/overview.md`
-   - `docs/architecture/openapi.yaml`
+   - `docs/architecture/api/<service>/openapi.yaml` (one dir per API code repo; iterate over each `<service>` listed in `project/repos.md`)
    - `docs/architecture/folder-structure.md`
 
    If the file exists, parse it for: stack components (frontend framework, backend runtime, DB), public endpoints, deployment targets. If a file is missing, note it in the test-plan under "Open assumptions" and continue.
@@ -66,5 +66,5 @@ Deterministic first-time creation of the top-level QA strategy doc. Run ONCE per
 10. **Log** in `memory/YYYY-MM-DD.md`: `bootstrap-test-plan: PR opened on docs repo, branch qa/test-plan-bootstrap`.
 
 ## Failure modes
-- No architecture docs present at all → still produce the test-plan, mark every section that depended on architecture as `TBD — pending architecture/overview.md`. File a `question` to architect asking when ADR-001 lands.
-- `docs/qa/test-plan.md` exists but is malformed or empty → do NOT overwrite. File a `question` to project-lead asking whether to start fresh on a new branch.
+- No architecture docs present at all → still produce the test-plan, mark every section that depended on architecture as `TBD — pending architecture/overview.md`. Post a `question` comment to architect asking when ADR-001 lands.
+- `docs/qa/test-plan.md` exists but is malformed or empty → do NOT overwrite. Post a `question` comment to project-lead asking whether to start fresh on a new branch.

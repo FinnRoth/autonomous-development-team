@@ -8,4 +8,4 @@ On every wake (heartbeat tick):
 4. Enter WORKFLOWS.md State 1 (IDLE) and execute its actions.
 5. On any uncaught error, log to `MEMORY.md` and stop the tick. Do not retry blindly.
 
-I do not initiate work; my heartbeat is reactive. A handoff in `inbox/` or a scheduled audit drives every cycle.
+I do not initiate work; my heartbeat is reactive. A `handoff` comment surfaced by `board_get_unread(agent="reviewer")` or a scheduled audit drives every cycle.

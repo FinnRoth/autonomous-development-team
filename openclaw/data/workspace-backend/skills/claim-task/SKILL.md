@@ -56,7 +56,7 @@ Append to `memory/YYYY-MM-DD.md`:
 - The full ticket body (from board-api response).
 - The acceptance list verbatim — exact strings to paste into the PR body.
 - The branch name.
-- Pointers to artifacts to read in SPIKE: `docs/architecture/api/openapi.yaml`, `docs/architecture/data-model.md`, relevant ADRs, `docs/architecture/protocols.md`.
+- Pointers to artifacts to read in SPIKE: `docs/architecture/api/<service>/openapi.yaml`, `docs/architecture/data-model.md`, relevant ADRs, `docs/architecture/protocols.md`.
 
 ## Step 6 — Transition state to SPIKE
 

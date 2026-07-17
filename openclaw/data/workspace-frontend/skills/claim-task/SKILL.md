@@ -56,7 +56,7 @@ Append to `memory/YYYY-MM-DD.md`:
 - The full ticket body (from board-api response).
 - The acceptance list verbatim — exact strings to paste into the PR body.
 - The branch name.
-- Pointers to artifacts to read in SPIKE: `docs/ui/ui-spec.md`, relevant page files, `docs/ui/design-tokens.json`, `docs/architecture/api/openapi.yaml`.
+- Pointers to artifacts to read in SPIKE: `docs/ui/ui-spec.md`, relevant page files, `docs/ui/design-tokens.json`, `docs/architecture/api/<service>/openapi.yaml` (`<service>` = the code repo per `project/repos.md`, if an endpoint is involved).
 
 ## Step 6 — Transition state to SPIKE
 

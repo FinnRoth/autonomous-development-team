@@ -2,7 +2,7 @@
 name: review-checklist
 description: Run the full reviewer checklist against an in-flight PR and produce a structured verdict-input.
 trigger: WORKFLOWS.md State 3 (CHECKLIST) — invoked once per PR after INTAKE has loaded all artifacts.
-inputs: pr_number, ticket_id, head_sha, expected_paths (set), pr_diff (text), ticket file (parsed), openapi.yaml (parsed), ui-spec.md (parsed), data-model.md (parsed), ADRs (set), CI status (per check)
+inputs: pr_number, ticket_id, head_sha, expected_paths (set), pr_diff (text), ticket file (parsed), architecture/api/<service>/openapi.yaml (parsed, for the service the PR touches), ui-spec.md (parsed), data-model.md (parsed), ADRs (set), CI status (per check)
 outputs: a verdict-input JSON object written to memory/<YYYY-MM-DD>.md under the current PR header, containing 14 (status, evidence, citation) tuples and aggregated counts.
 ---
 
@@ -59,10 +59,10 @@ This skill is deterministic. Run every step in order. Do not skip. Each step wri
 
 ### Step 8 — OpenAPI contract adherence
 
-1. If the diff touches any API handler/route, diff the PR's `openapi.yaml` (if modified) against `docs/architecture/openapi.yaml`.
-2. For each modified handler, check method+path+request/response schema match the corresponding `openapi.yaml` entry.
-3. Any mismatch → `fail`, list the mismatches; citation: `openapi.yaml#<endpoint>`.
-4. If `openapi.yaml` was edited without an architect-tagged commit, downgrade severity but still `fail`; citation: `rules.md §R-004`.
+1. If the diff touches any API handler/route, determine which `code` repo (service) it belongs to and diff the PR's per-service spec (if modified) against `docs/architecture/api/<service>/openapi.yaml` (`<service>` = repo name in `project/repos.md`).
+2. For each modified handler, check method+path+request/response schema match the corresponding entry in that service's `openapi.yaml`.
+3. Any mismatch → `fail`, list the mismatches; citation: `api/<service>/openapi.yaml#<endpoint>`.
+4. If the service's `openapi.yaml` was edited without an architect-tagged commit, downgrade severity but still `fail`; citation: `rules.md §R-004`.
 
 ### Step 9 — UI spec adherence
 

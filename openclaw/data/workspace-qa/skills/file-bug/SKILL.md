@@ -1,14 +1,14 @@
 ---
 name: file-bug
-description: Author BUG-NN.md with full evidence and route to the suspected owner via handoff.
+description: Author BUG-NN.md with full evidence and route to the suspected owner via a board-api handoff comment.
 trigger: A bug has been reproduced twice with evidence captured (from chaos-explore or automated test failure).
 inputs:
   - reproduced bug context: steps, expected vs actual, severity guess
   - evidence captured to docs/qa/bug-reports/evidence/BUG-NN/ (allocated id)
 outputs:
   - docs/qa/bug-reports/BUG-NN.md
-  - handoff JSON to suspected owner (CC reviewer + project-lead)
-  - if S1: escalation JSON to project-lead BEFORE the handoff
+  - board-api handoff comment to suspected owner (notify reviewer + project-lead)
+  - if S1: board-api escalation comment to project-lead BEFORE the handoff
   - updated case file's Linked Bugs section
   - updated docs/qa/coverage-matrix.md
 ---
@@ -39,8 +39,8 @@ Deterministic bug-filing from a confirmed (twice-reproduced) repro.
 4. **Identify suspected_owner.** Use these heuristics:
    - Frontend rendering, client state, UI behavior, routing → `frontend`.
    - API response, DB state, server logic, auth, persistence → `backend`.
-   - Contract mismatch (frontend and backend disagree per openapi) → CC both, `to:` whoever owns the side that violates the contract; if unclear, `to: reviewer` with `question` first.
-   - UI matches spec but spec is wrong → CC `uiux` (question, not bug).
+   - Contract mismatch (frontend and backend disagree per the service's `api/<service>/openapi.yaml`) → post a `question` to `reviewer` first (with `notify=["backend", "frontend"]`) asking who owns the violating side; route the bug once the owner is clear.
+   - UI matches spec but spec is wrong → post a `question` to `uiux` (not a bug), with `notify=["project-lead"]`.
 
 5. **Write `docs/qa/bug-reports/BUG-NN.md`** using this frozen template:
 
@@ -92,7 +92,7 @@ discovered_via: chaos-explore | automated-spec | regression
 <empty; filled during REGRESS when fix is verified.>
 ```
 
-6. **If severity is S1**: send an `escalation` to project-lead BEFORE the handoff. See `PROTOCOLS.md §3.1` for the template. Severity = `blocker`. This lets PL decide on release pull / hotfix policy before the fixer even starts.
+6. **If severity is S1**: post an `escalation` comment to project-lead BEFORE the handoff. See `PROTOCOLS.md §3.1` for the template. Severity = `blocker` (stated in the body). This lets PL decide on release pull / hotfix policy before the fixer even starts.
 
 7. **Commit the bug report**:
    - `cd docs && git checkout -b qa/BUG-NN-<slug>`
@@ -101,7 +101,7 @@ discovered_via: chaos-explore | automated-spec | regression
    - `git push origin qa/BUG-NN-<slug>`
    - Open PR via `gh`; request reviewer (Mira) like any other PR. Do NOT self-merge.
 
-8. **Send three separate handoffs** per PROTOCOLS.md §4: one action handoff to `suspected_owner`, one visibility handoff to `reviewer`, one visibility handoff to `project-lead`. All three carry identical `artifact_paths`. Templates in `PROTOCOLS.md §1.1 / §1.1b / §1.1c`. Send via `openclaw-messaging`.
+8. **Post the bug-report `handoff` comment** per PROTOCOLS.md §1.1: `board_add_comment(ticket_id=<related_story>, author="qa", to=<suspected_owner>, type="handoff", notify=["reviewer", "project-lead"], body=...)`. The body carries the summary, severity, the `docs/qa/bug-reports/BUG-NN.md` path, and the acceptance. Reviewer and project-lead get visibility via `notify` on the SAME comment — never post duplicate comments; there is no `cc` field. Template in `PROTOCOLS.md §1.1`.
 
 9. **Update the originating case file** (`docs/qa/cases/<story-id>.md`):
    - Append to `Linked Bugs`: `BUG-NN (Sx) — <summary>`.
@@ -115,6 +115,6 @@ discovered_via: chaos-explore | automated-spec | regression
 
 ## Failure modes
 
-- Cannot decide suspected_owner → `to: reviewer` with a `question` type asking for triage, NOT a handoff. Reviewer routes.
+- Cannot decide suspected_owner → post a `question` comment to `reviewer` asking for triage (with `notify=["project-lead"]`), NOT a handoff. Reviewer routes.
 - Evidence missing → re-reproduce. Do not file without evidence.
 - I cannot reproduce a third time when packaging the report → DOWNGRADE: do not file. Add to "Suspicious Observations" in the case file. A bug I can't reproduce on demand will be dismissed.

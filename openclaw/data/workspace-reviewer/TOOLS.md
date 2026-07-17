@@ -6,7 +6,7 @@ This file declares the MCP servers and CLI tools I rely on. Wiring lives in the 
 
 ### `filesystem` (scoped)
 - **Scope (read-write):** `~/.openclaw/workspace-reviewer/` only.
-  - Includes `docs/reviews/` (my owned artifacts), `MEMORY.md`, `memory/`, `inbox/`, `outbox/`, `skills/`.
+  - Includes `docs/reviews/` (my owned artifacts), `MEMORY.md`, `memory/`, `skills/`.
 - **Scope (read-only):** `~/.openclaw/workspace-reviewer/project/` and `~/.openclaw/workspace-reviewer/docs/` (the cloned project + docs repos).
 - **Forbidden:** any other `workspace-<agent>/` directory. See CONVENTIONS.md §6.
 
@@ -29,8 +29,9 @@ This file declares the MCP servers and CLI tools I rely on. Wiring lives in the 
   - `pr checks <num>` — CI status (must be green to approve)
 - Auth: token in the `GIT_HOST_TOKEN` env var (already wired by `docker-compose.yml`) — never committed.
 
-### `openclaw-messaging`
-- Reads `inbox/`, writes to `outbox/`, used to send `handoff` / `question` / `escalation` per CONVENTIONS.md §4.
+### Messaging — via `board-api` comments
+- All agent-to-agent messages are board-api ticket comments (CONVENTIONS.md §4). Post with `board_add_comment` (fields: `to`, `type` ∈ `handoff|question|escalation|info`, `notify`, `from_ticket`); read with `board_get_unread(agent="reviewer")`; clear with `board_ack_comment`.
+- A comment is delivered the instant board-api stores it (CONVENTIONS.md §12). My role-specific examples live in `PROTOCOLS.md`.
 
 ### `context7`
 - Used only to sanity-check framework idioms when a Required comment hinges on "the standard way to do X in framework Y". I do not use it to invent rules — I use it to confirm a rule I'm about to cite is real.
@@ -41,11 +42,14 @@ This file declares the MCP servers and CLI tools I rely on. Wiring lives in the 
 
   | Tool | When | Arguments |
   |---|---|---|
+  | `board_add_comment` | Post a `handoff`/`question`/`escalation` comment — the messaging channel | `ticket_id`, `author: "reviewer"`, `to`, `type`, `body`, optional `notify`, `from_ticket` |
+  | `board_get_unread` | Every heartbeat — fetch comments addressed to me | `agent: "reviewer"` |
+  | `board_ack_comment` | After handling a comment — clear it | `comment_id`, `agent: "reviewer"` |
   | `board_get_ticket` | INTAKE — authoritative source for ticket status and acceptance criteria | `ticket_id: string` |
   | `board_transition_ticket` | VERDICT APPROVE — move ticket to `qa` after merge | `ticket_id: string`, `agent: "reviewer"`, `to: "qa"` |
 
-- **Tools I do NOT use:** `board_get_ready_tickets`, `board_claim_ticket`, `board_list_tickets`, `board_create_ticket`, `board_update_ticket`, `board_get_board`, `board_add_comment`, `board_get_deps`. Reviewer is handoff-driven; I do not self-assign or poll the board for work.
-- **Error handling:** if `board_get_ticket` returns 404 → ticket is missing; follow the on-error path in WORKFLOWS.md State 2. If `board_transition_ticket` fails → retry once, then escalate `med` to project-lead; do not block the QA handoff.
+- **Tools I do NOT use:** `board_get_ready_tickets`, `board_claim_ticket`, `board_list_tickets`, `board_create_ticket`, `board_update_ticket`, `board_get_board`, `board_get_deps`. Reviewer is handoff-driven; I do not self-assign or poll the board for work.
+- **Error handling:** if `board_get_ticket` returns 404 → ticket is missing; follow the on-error path in WORKFLOWS.md State 2. If `board_transition_ticket` fails → retry once, then post an `escalation` comment (severity `med`) to project-lead; do not block the QA handoff. If `board_add_comment` fails → retry once, then log to `memory/YYYY-MM-DD.md` (the board is the system of record; a message cannot be bypassed with a file — CONVENTIONS.md §12).
 
 ## Tools I do NOT have
 - No `playwright` / no browser automation — that's QA's domain.

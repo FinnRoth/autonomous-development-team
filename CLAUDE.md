@@ -54,9 +54,7 @@ adt-dev-1-02/
 │           ├── HEARTBEAT.md      # periodic-poll checklist
 │           ├── MEMORY.md         # long-term memory (empty stub in template)
 │           ├── CONVENTIONS.md    # symlink → adt-shared/agent-files/CONVENTIONS.md
-│           ├── inbox/.gitkeep    # runtime message drop
-│           ├── outbox/.gitkeep   # runtime audit trail
-│           ├── memory/.gitkeep   # daily YYYY-MM-DD.md logs go here (ignored)
+│           ├── memory/.gitkeep   # daily YYYY-MM-DD.md logs go here (ignored); private journal, NOT a comms channel
 │           └── skills/<name>/SKILL.md   # 5-9 role-specific deterministic skills
 └── board-api/                    # Board API container (task board service)
     ├── Dockerfile                # python:3.12-slim + FastAPI + SQLite
@@ -89,7 +87,7 @@ Repo layout (N repos, typed as `code` or `docs`) is defined at onboarding time i
 
 **`project-lead` is the default agent** — the user's front door. The `main` agent still exists (OpenClaw seed) but is not part of the team. No one talks to `main`.
 
-Communication happens over OpenClaw's built-in agent-to-agent messaging using three **frozen** JSON schemas: `handoff`, `question`, `escalation`. See `data/adt-shared/CONVENTIONS.md` §4.
+Communication happens as **board-api ticket comments** using three **frozen** types: `handoff`, `question`, `escalation` (posted via `board_add_comment`, read via `board_get_unread`). Non-ticket / boot-time escalations go on the permanent `SYSTEM-00` ticket (seeded by board-api at startup). See `openclaw/data/adt-shared/agent-files/CONVENTIONS.md` §4.
 
 ---
 
@@ -179,7 +177,7 @@ docker exec adt-test-1-02 python3 -c "import json; c=json.load(open('/home/node/
 These are enforced across every role file. Breaking them makes the team behave inconsistently.
 
 1. **Only `project-lead` addresses the user directly.** Every other agent that needs a user decision files an `escalation` upward.
-2. **Only three message types exist:** `handoff`, `question`, `escalation`. No `answer`, no `cc`, no other fields on the message envelope. Adding a field requires amending CONVENTIONS.md §4 and every agent's PROTOCOLS.md.
+2. **Only three message types exist:** `handoff`, `question`, `escalation` — all as board-api ticket comments (`board_add_comment`). Additional recipients go in `notify`. Adding a comment field requires amending CONVENTIONS.md §4 and every agent's PROTOCOLS.md.
 3. **Per-agent workspaces are isolated.** No agent writes into another agent's `workspace-*/`.
 4. **No self-merge, no push to `main`.** Reviewer is the sole gatekeeper (except for reviewer's own docs — same rule via handoff back).
 5. **Ticket schema is frozen** (CONVENTIONS.md §3). Frontmatter fields are exact; no extras.
@@ -192,7 +190,7 @@ These are enforced across every role file. Breaking them makes the team behave i
 
 ## 7. Git hygiene
 
-Repo tracks the **template only**. Runtime state (sessions, sqlite, logs, device identity, per-workspace `.git`, daily memory files, inbox/outbox contents) is git-ignored. Sentinel `.gitkeep` files preserve empty runtime dirs.
+Repo tracks the **template only**. Runtime state (sessions, sqlite, logs, device identity, per-workspace `.git`, daily memory files) is git-ignored. Sentinel `.gitkeep` files preserve empty runtime dirs.
 
 - Author: `Finn Roth <finn.roth@sap.com>` (host global git config).
 - Initial commit: `c273a71` — "Initial ADT template: 7 agents, 47 skills, 13 MCP servers".
