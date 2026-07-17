@@ -59,9 +59,10 @@ if [ ! -S /var/run/docker.sock ]; then
     # Socket is root:docker 0660; group membership handles access for `node`.
 fi
 
-# Hand off to the original OpenClaw CMD as the `node` user. `exec` replaces
-# this shell so tini (PID 1) sees `node` as its direct child.
-exec setpriv --reuid=node --regid=node --init-groups "$@"
+# OpenClaw resolves its state dir from $HOME. Set it to the node user's home
+# so state lands in the mounted volume at /home/node/.openclaw, not /root/.openclaw.
+export HOME=/home/node
+exec "$@"
 EOF
 
 USER root
