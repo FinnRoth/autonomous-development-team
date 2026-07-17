@@ -5,7 +5,7 @@
 ## Top-level FSM
 
 ```
-IDLE ──(handoff arrives)──▶ INTAKE ──▶ CHECKLIST ──▶ COMMENT ──▶ VERDICT
+IDLE ──(handoff comment)──▶ INTAKE ──▶ CHECKLIST ──▶ COMMENT ──▶ VERDICT
                                                                    │
                                   ┌──────── REQUEST_CHANGES ◀──────┤
                                   │                                │
@@ -28,15 +28,15 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Actions:**
   1. Verify `project/` and `docs/` exist. If either is missing, enter STANDBY (CONVENTIONS.md §9) and return.
   2. `git -C docs pull --ff-only`.
-  3. Scan `inbox/` for unprocessed messages. Sort by ISO timestamp ascending.
-  4. For each message:
-     - `handoff` from `backend` or `frontend` → transition to **INTAKE** with that handoff.
+  3. Call `board_get_unread(agent="reviewer")` to fetch comments addressed to me. Handle in order received.
+  4. For each comment (then `board_ack_comment(comment_id=<id>, agent="reviewer")`):
+     - `handoff` from `backend` or `frontend` (a PR-ready notification) → transition to **INTAKE** with that PR/ticket.
      - `escalation` from `project-lead` with `requested_decision: "amend rules.md ..."` → run `update-rules` skill.
      - `escalation` from `project-lead` directing a re-review → transition to **INTAKE**.
      - `question` reply from `architect` to one of my prior questions → resume the paused PR's **CHECKLIST**.
-     - Anything else → archive to `inbox/processed/` and log; do not act on out-of-scope messages.
-  5. If no messages, check `docs/reviews/review-log.md` for any PR I approved >24h ago whose post-merge audit I have not run → transition to **POST_MERGE_AUDIT**.
-- **Exit condition:** A transition fires, or the agent goes back to sleep with empty inbox and no overdue audits.
+     - Anything else → `board_ack_comment` it and log; do not act on out-of-scope comments.
+  5. If no comments, check `docs/reviews/review-log.md` for any PR I approved >24h ago whose post-merge audit I have not run → transition to **POST_MERGE_AUDIT**.
+- **Exit condition:** A transition fires, or the agent goes back to sleep with no unread comments and no overdue audits.
 - **Output artifacts:** none.
 - **On-error:** Log the error to `MEMORY.md` and re-enter IDLE on next wake.
 
@@ -44,12 +44,12 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 
 ## State 2 — `INTAKE`
 
-- **Entry condition:** A `handoff` message has been selected naming a PR (`pr_url` in `artifact_paths` or embedded in `summary`) and a `ticket_id`.
+- **Entry condition:** A `handoff` comment has been selected naming a PR (`pr_url` embedded in the body) and a `ticket_id`.
 - **Actions:**
   1. Fetch the PR metadata via host CLI: `gh pr view <num> --json number,title,body,headRefOid,baseRefName,files,statusCheckRollup`.
   2. Verify the PR is targeting `main` (or the project's default branch — read from CONVENTIONS.md §2). If not, immediately **VERDICT** = `REQUEST_CHANGES` with the single Required: "PR must target the default branch (CONVENTIONS.md §2)".
   3. Call `board_get_ticket(ticket_id=<TICKET-ID>)` — this is the **authoritative source** for the ticket's current status, acceptance criteria, and narrative body. Verify:
-     - Board status (from `board_get_ticket`) is `in_review`. If not, send `question` to `project-lead`: "PR <num> opened on ticket whose board status is <X>; should I review?" and pause this cycle.
+     - Board status (from `board_get_ticket`) is `in_review`. If not, post a `question` comment to `project-lead`: "PR <num> opened on ticket whose board status is <X>; should I review?" and pause this cycle.
      - The `acceptance` block from the board response exists and is non-empty.
   4. Fetch the PR diff: `gh pr diff <num>`.
   5. Build the **expected paths** set: derive from the ticket's owner and `docs/<docs-repo-name>/architecture/folder-structure.md` (e.g. `backend` → the backend subtree of the relevant code repo, `frontend` → the frontend subtree). Never hard-code paths — read them from `folder-structure.md`.
@@ -57,8 +57,8 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Exit condition:** All four artifacts (PR metadata, diff, ticket, CI status) are loaded.
 - **Output artifacts:** A scratch entry under `memory/<YYYY-MM-DD>.md`.
 - **On-error:**
-  - PR not found / 404 → reply to the handoff sender with a `question`: "PR <num> not accessible — has it been opened?"
-  - Ticket missing from board (`board_get_ticket` returns not found) → `escalation` to `project-lead`, severity `med`, requested_decision: "create or repair ticket <ID>".
+  - PR not found / 404 → post a `question` comment to the handoff sender: "PR <num> not accessible — has it been opened?"
+  - Ticket missing from board (`board_get_ticket` returns not found) → post an `escalation` comment to `project-lead`, severity `med`, requesting: "create or repair ticket <ID>".
 
 ---
 
@@ -73,7 +73,7 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
   5. Type-check passing on CI?
   6. Unit tests for all touched files exist + passing?
   7. No files modified outside expected paths?
-  8. OpenAPI contract: any endpoint change matches `openapi.yaml` exactly?
+  8. OpenAPI contract: any endpoint change matches the service's `architecture/api/<service>/openapi.yaml` exactly?
   9. UI contract: any UI change matches `ui-spec.md` (tokens, flows, copy)?
   10. Data model: any DB-touching change matches `data-model.md`?
   11. Security smells (auth bypass, hard-coded secrets, injection, missing input validation)?
@@ -84,7 +84,7 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Output artifacts:** A `verdict-input` JSON block written to `memory/<YYYY-MM-DD>.md` under the current PR header.
 - **On-error:**
   - A `fail` without a citation → re-investigate. If I genuinely believe a rule is missing, downgrade to "Suggested" and queue an `update-rules` escalation after the verdict ships.
-  - A check requires a decision I cannot make from ADRs/contracts → send `question` to `architect`, transition to **IDLE** (paused), resume CHECKLIST when the answer arrives.
+  - A check requires a decision I cannot make from ADRs/contracts → post a `question` comment to `architect`, transition to **IDLE** (paused), resume CHECKLIST when the answer arrives.
 
 ---
 
@@ -154,6 +154,7 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
        | <ISO> | <PR-num> | <TICKET-ID> | REQUEST_CHANGES | — | <required-count> required, <suggested-count> suggested |
        ```
      - Commit `docs/<docs-repo-name>/reviews/review-log.md` to the docs repo (`git -C repos/<docs-slug> add … && git -C repos/<docs-slug> commit -m "[reviewer] log PR <num> request-changes" && git -C repos/<docs-slug> push`).
+     - Post a `handoff` comment to the developer (`backend`/`frontend`) summarizing the REQUEST_CHANGES verdict (PROTOCOLS.md §1) so they know their PR needs work.
      - Transition to **IDLE**.
   2. Else (no Required, all acceptance covered, CI green):
      - Post `gh pr review <num> --approve --body <link-to-summary>`.
@@ -164,14 +165,14 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
        | <ISO> | <PR-num> | <TICKET-ID> | APPROVE+MERGED | <merge-sha> | 0 required |
        ```
      - Commit + push the log.
-     - Send `handoff` to `qa` with the merge SHA, the ticket id, and the path to the summary comment.
+     - Post a `handoff` comment to `qa` (PROTOCOLS.md §1) with the merge SHA, the ticket id, and a link to the summary comment.
      - Transition to **POST_MERGE_AUDIT** (scheduled, not immediate — see below).
-- **Exit condition:** Verdict posted, log appended, log committed. For APPROVE: board transitioned, merge complete, and QA handoff sent.
-- **Output artifacts:** `docs/<docs-repo-name>/reviews/review-log.md` entry; `outbox/<ISO>-qa-handoff.json` (on approve); merge commit on `main`.
+- **Exit condition:** Verdict posted, log appended, log committed. For APPROVE: board transitioned, merge complete, and QA handoff comment posted.
+- **Output artifacts:** `docs/<docs-repo-name>/reviews/review-log.md` entry; QA `handoff` comment (on approve); merge commit on `main`.
 - **On-error:**
   - Merge conflicts on squash → REQUEST_CHANGES with Required: "Resolve conflicts against `main` and re-push". The verdict flips. Log accordingly.
-  - `board_transition_ticket` fails → log the error, retry once; if it still fails, escalate `med` to project-lead with the ticket id before proceeding. Do not block the QA handoff.
-  - Push to docs repo fails → retry; if persistent, `escalation` `high` to project-lead.
+  - `board_transition_ticket` fails → log the error, retry once; if it still fails, post an `escalation` comment (severity `med`) to project-lead with the ticket id before proceeding. Do not block the QA handoff.
+  - Push to docs repo fails → retry; if persistent, post an `escalation` comment (severity `high`) to project-lead.
 
 ---
 
@@ -181,12 +182,12 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 - **Actions:** Run the `audit-post-merge` skill:
   1. `git -C project log <head-sha-at-approval>..<merge-sha> --oneline` on the (now-deleted) branch — fetch from reflog or git host's branch-restore API.
   2. If commits exist between approval-SHA and merge-SHA that I did not see in my review, flag them.
-  3. Inspect those commits' diffs. If they touch anything beyond trivial whitespace/comment fixes → `escalation` `high` to `project-lead` with the diff.
-  4. Mark the audit complete in `docs/reviews/review-log.md` by appending `| audited-clean` or `| audited-flagged: <escalation-id>` to the PR's row.
+  3. Inspect those commits' diffs. If they touch anything beyond trivial whitespace/comment fixes → post an `escalation` comment (severity `high`) to `project-lead` with the diff.
+  4. Mark the audit complete in `docs/reviews/review-log.md` by appending `| audited-clean` or `| audited-flagged: <comment-id>` to the PR's row.
 - **Exit condition:** Audit decision recorded, log updated.
-- **Output artifacts:** Updated `review-log.md`; possibly an `escalation` message.
+- **Output artifacts:** Updated `review-log.md`; possibly an `escalation` comment.
 - **On-error:**
-  - Branch already deleted and reflog gone → log as `| audited-unavailable` and escalate `low` to project-lead suggesting branch retention policy.
+  - Branch already deleted and reflog gone → log as `| audited-unavailable` and post an `escalation` comment (severity `low`) to project-lead suggesting a branch retention policy.
 
 ---
 
@@ -202,6 +203,6 @@ A verdict is **always terminal** for the current cycle. There is no "comment-onl
 ## Side state — `RULES_AMENDMENT`
 
 - **Entry condition:** `escalation` from `project-lead` with `requested_decision: "amend rules.md ..."` approved.
-- **Actions:** Run `update-rules` skill: add/edit the rule with a stable id, commit + push, reply to the escalation with the new rule id.
-- **Exit condition:** `rules.md` updated, commit pushed, reply sent.
+- **Actions:** Run `update-rules` skill: add/edit the rule with a stable id, commit + push, post a reply `escalation` comment referencing the approving comment with the new rule id.
+- **Exit condition:** `rules.md` updated, commit pushed, confirmation comment posted.
 - **Output artifacts:** Updated `docs/reviews/rules.md`.

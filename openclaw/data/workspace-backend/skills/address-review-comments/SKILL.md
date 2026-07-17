@@ -45,8 +45,8 @@ Deterministic procedure. Run once per `request_changes` round.
    - For each A comment: reply `addressed in <SHA>` where `<SHA>` is the commit that contains the fix.
    - For each B comment: reply with the answer; if answering led to a fix, also link the SHA.
    - For each C comment: same as A.
-   - For each D comment: reply `routing to architect — see question <outbox filename>` and send the `question` to architect.
-   - For each E comment: reply with the out-of-scope template above; if it's a real new ask, send a `handoff` to project-lead suggesting a new ticket.
+   - For each D comment: reply `routing to architect — see question comment on this ticket` and post the `question` comment to architect (board_add_comment, to="architect").
+   - For each E comment: reply with the out-of-scope template above; if it's a real new ask, post a `handoff` comment to project-lead suggesting a new ticket.
 
 8. **Re-request review** from `reviewer` via the host CLI.
 

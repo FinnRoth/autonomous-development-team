@@ -136,15 +136,19 @@ Instead of waiting for a `handoff` from `project-lead`, agents in roles `backend
 - A `409` response from `board_claim_ticket` means another agent won the race or deps are unmet; re-poll.
 - On every status transition, agents call `board_transition_ticket` to update board-api. board-api is the only record — no markdown file is updated.
 
-**Role of handoffs in the new model:**
-Handoffs (`handoff`, `question`, `escalation`) remain the protocol for:
-- Contextual dispatches where ticket body is insufficient (e.g., uiux design kickoffs, architect feasibility reports).
-- Reviewer PR notifications (backend/frontend → reviewer via inbox).
-- QA bug reports (qa → project-lead, backend/frontend, reviewer).
+**Coordination and messaging both flow through board-api.** Task assignment happens by self-claim (above). All agent-to-agent messages — `handoff`, `question`, `escalation` — are **ticket comments** (§4), posted with `board_add_comment` and read with `board_get_unread`.
+
+**Role of comments in this model:**
+Comments (`handoff`, `question`, `escalation`) are the protocol for:
+- Contextual dispatches where the ticket body is insufficient (e.g., uiux design kickoffs, architect feasibility reports).
+- Reviewer PR notifications (backend/frontend → reviewer, as a `handoff` on the ticket).
+- QA bug reports (qa → project-lead, backend/frontend, reviewer, via `notify`).
 - Priority overrides and re-assignments from project-lead.
 - All escalations at every level.
 
-Handoffs are **not** used for routine task assignment to backend, frontend, uiux, or architect — these roles self-claim from board-api.
+Comments are **not** used for routine task assignment to backend, frontend, uiux, or architect — these roles self-claim from board-api.
+
+**SYSTEM-00 — the non-ticket channel.** board-api seeds a permanent `SYSTEM-00` ticket at startup. Escalations and questions that do not belong to any project ticket — boot-time problems (missing `GIT_HOST_TOKEN`), "no project onboarded yet", or cross-cutting decisions with no parent Epic — are posted as comments on `SYSTEM-00`. It never transitions to `done`.
 
 ---
 
@@ -158,52 +162,77 @@ Use `board_get_ticket(id)` to read any ticket. Use `board_create_ticket` to crea
 
 ---
 
-## 4. Agent-to-agent messages (frozen schemas)
+## 4. Agent-to-agent messages (board-api comments)
 
-Messages are JSON files written to `outbox/<ISO>-<to>-<type>.json` and delivered via the OpenClaw gateway. They are mirrored into the recipient's `inbox/`. Three types:
+**All agent-to-agent communication happens as comments on board-api tickets.** A comment is delivered the instant board-api stores it; the recipient sees it on their next heartbeat via `board_get_unread`. This is the single messaging channel (see §12).
 
-### 4.1 `handoff`
-```json
-{
-  "type": "handoff",
-  "from": "project-lead",
-  "to": "architect",
-  "ticket_id": "EPIC-02",
-  "artifact_paths": ["docs/requirements/Q&A-billing.md"],
-  "summary": "Billing epic — ready for feasibility review",
-  "acceptance": ["arch produces feasibility-report-EPIC-02.md within 1 cycle"],
-  "blocking_questions": []
-}
+A comment is posted with `board_add_comment` and has these fields:
+
+| Field | Meaning |
+|---|---|
+| `ticket_id` | The ticket the comment is posted on. For a handoff, this is the **destination** ticket (the one the recipient will act on). |
+| `author` | Your agent id (the sender). |
+| `type` | One of `handoff`, `question`, `escalation` (actionable — **require `to`**), or `info`/`comment` (non-actionable notes). |
+| `body` | The message text. Put the structured content (summary, acceptance, options, etc.) here as readable prose or a small labelled block. |
+| `to` | The recipient agent id. **Required** for `handoff`, `question`, `escalation`. This is who gets it in `board_get_unread`. |
+| `notify` | Optional array of additional agent ids who should also see it (e.g. loop in `frontend` on a backend↔architect contract answer). |
+| `from_ticket` | Optional. On a handoff, the **source** ticket id, so "TASK-12 done → TASK-13 is yours" is explicit. |
+
+The recipient calls `board_get_unread(<self>)` each heartbeat, handles each comment per `WORKFLOWS.md`, then calls `board_ack_comment(comment_id, <self>)` to clear it.
+
+The three actionable types:
+
+### 4.1 `handoff` — "this ticket (and its context) is now yours"
+
+Posted on the **destination** ticket. Routine task assignment to `backend`/`frontend`/`uiux`/`architect` does NOT use a handoff — those roles self-claim ready tickets from board-api (§2.4). Handoffs are for context-carrying dispatches: PR-ready notifications to `reviewer`, merged→test notifications to `qa`, feasibility kickoffs, priority overrides.
+
+```
+board_add_comment(
+  ticket_id="EPIC-02",          # destination ticket
+  author="project-lead",
+  to="architect",
+  type="handoff",
+  from_ticket=null,
+  body="Billing epic — ready for feasibility review. Artifacts: "
+       "requirements/Q&A-billing.md. Acceptance: architect produces "
+       "feasibility/feasibility-report-EPIC-02.md within 1 cycle."
+)
 ```
 
-### 4.2 `question`
-```json
-{
-  "type": "question",
-  "from": "backend",
-  "to": "architect",
-  "ticket_id": "TASK-12",
-  "question": "openapi.yaml says 'string' for amount but data-model says 'decimal'. Which is canonical?",
-  "why_blocking": "cannot scaffold endpoint until resolved",
-  "options_considered": ["use string + parse", "request schema fix"]
-}
+### 4.2 `question` — "I need an answer before I can proceed"
+
+Posted on the ticket the question is about. If the question is not about any one ticket, post it on the parent Epic, or on `SYSTEM-00` if there is none.
+
+```
+board_add_comment(
+  ticket_id="TASK-12",
+  author="backend",
+  to="architect",
+  type="question",
+  body="api/billing/openapi.yaml says 'string' for amount but data-model says 'decimal'. "
+       "Which is canonical? Blocking: cannot scaffold the endpoint until resolved. "
+       "Options considered: (a) use string + parse, (b) request schema fix."
+)
 ```
 
-### 4.3 `escalation`
-```json
-{
-  "type": "escalation",
-  "from": "architect",
-  "to": "project-lead",
-  "severity": "high",
-  "summary": "Requirement R-4 incompatible with chosen stack",
-  "requested_decision": "drop R-4 or change stack",
-  "options": ["scope cut", "stack migration ADR-008"],
-  "recommendation": "scope cut for v1; revisit in v2"
-}
+### 4.3 `escalation` — "this needs a decision above my authority"
+
+Posted on the affected ticket, or on `SYSTEM-00` for boot-time / non-ticket problems (§2.4). Only `project-lead` may then relay to the user.
+
+```
+board_add_comment(
+  ticket_id="TASK-31",
+  author="architect",
+  to="project-lead",
+  type="escalation",
+  body="severity: high. Requirement R-4 incompatible with chosen stack. "
+       "Requested decision: drop R-4 or change stack. "
+       "Options: (a) scope cut, (b) stack migration ADR-008. "
+       "Recommendation: scope cut for v1; revisit in v2."
+)
 ```
 
-`severity ∈ {low, med, high, blocker}`. `to: "user"` is only valid from `project-lead`.
+`severity ∈ {low, med, high, blocker}` is stated in the `body` of an escalation. A recipient of `to: "user"` is only ever valid when `author` is `project-lead` — and `project-lead` relays to the user via chat, not via a comment.
 
 ---
 
@@ -221,9 +250,7 @@ workspace-<agent>/
 ├── PROTOCOLS.md        ← message schemas + addressing
 ├── CONVENTIONS.md      ← symlink to /home/node/.openclaw/adt-shared/CONVENTIONS.md
 ├── MEMORY.md           ← per-agent long-term memory (private to this agent)
-├── memory/YYYY-MM-DD.md
-├── inbox/              ← incoming messages (read; do not delete — archive after processing)
-├── outbox/             ← outgoing messages (audit log)
+├── memory/YYYY-MM-DD.md  ← private daily journal (not a comms channel)
 ├── skills/<name>/SKILL.md
 ├── docs/
 │   └── <docs-repo-name>/   ← git clone of the docs repo (runtime, not in git)
@@ -234,6 +261,7 @@ workspace-<agent>/
 
 **Workspace layout rules (mandatory):**
 - `docs/`, `code/`, and `misc/` are the only permitted locations for runtime-generated content.
+- Agent-to-agent messages are **board-api comments** (§4).
 - `docs/<name>/` — git clone of the docs repo, named after the repo as it appears on the git host.
 - `code/<name>/` — git clone of a code repo, named after the repo. One subdirectory per repo; clone only those your role requires (see §2.2).
 - `misc/` — scratch files, temporary artefacts, anything that does not belong in a repo.
@@ -245,7 +273,7 @@ workspace-<agent>/
 2. Read `ROLE.md` — what you do
 3. Read `WORKFLOWS.md` — how you do it
 4. Read `CONVENTIONS.md` (this file) — team rules
-5. Scan `inbox/` — anything new
+5. Call `board_get_unread(<my-agent-id>)` — anything addressed to me since last wake
 6. Read `docs/<docs-repo-name>/project/repos.md` if it exists — know the current repo list
 7. Pull all repos you have cloned that have remote changes
 8. Call `board_list_tickets()` to check the current board state.
@@ -269,6 +297,7 @@ workspace-<agent>/
 12. Never create files or directories at workspace root. All runtime output goes into `docs/`, `code/`, or `misc/` (see §5).
 13. Never invent file paths inside a repo. All paths come from `architecture/folder-structure.md` in the docs repo (owned by architect). If it is absent, enter STANDBY and escalate.
 14. Never commit directly to `main`, `staging`, or `production` — all changes arrive via reviewed PRs only.
+15. Never use files or `sessions_send` payloads to send agent-to-agent messages. The ONLY messaging channel is board-api comments (§4). Post with `board_add_comment`, read with `board_get_unread`.
 
 ---
 
@@ -325,22 +354,22 @@ printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials
 gh auth status 2>&1 | head -3
 ```
 
-**If `GIT_HOST_TOKEN` is empty or auth fails:** do NOT attempt git/gh operations. If you are `project-lead`, escalate to the user. If you are any other agent, file an `escalation` to `project-lead` with `severity: blocker` and `summary: "GIT_HOST_TOKEN missing or invalid — git operations blocked"`.
+**If `GIT_HOST_TOKEN` is empty or auth fails:** do NOT attempt git/gh operations. If you are `project-lead`, escalate to the user. If you are any other agent, post an `escalation` comment on `SYSTEM-00` (there is no project ticket yet at boot) with `to: "project-lead"`, `severity: blocker`, and body `"GIT_HOST_TOKEN missing or invalid — git operations blocked"`.
 
 This must be done **before** any `git clone`, `git push`, `gh pr create`, or similar command.
 
 ---
 
-## 12. Agent-to-agent message delivery
+## 12. Message delivery = writing the comment
 
-Messages are NOT delivered by writing a file to `outbox/` alone. Writing to `outbox/` is the **audit log** — it does not deliver the message.
+A message is delivered the instant `board_add_comment` stores it — that call is the entire send.
 
-**To actually deliver a message**, use the OpenClaw `sessions_send` tool (or equivalent gateway call) **after** writing the outbox file. Example sequence:
+1. Post the message: `board_add_comment(ticket_id=..., author=<self>, to=<recipient>, type=<handoff|question|escalation>, body=...)`.
+2. The recipient sees it on their next heartbeat via `board_get_unread(<recipient>)`, handles it, and calls `board_ack_comment(comment_id, <recipient>)`.
 
-1. Write `outbox/<ISO>-<to>-<type>.json` (audit record).
-2. Call `sessions_send` (or `send_message` / equivalent) with `to: "<agent-id>"` and the JSON payload.
+If `board_add_comment` returns an error, retry once; if it still fails, log to `memory/YYYY-MM-DD.md` — the board is the system of record and cannot be bypassed with a file.
 
-If `sessions_send` is unavailable, log a warning to `memory/YYYY-MM-DD.md` and escalate to `project-lead`. Do not assume a message was delivered just because the outbox file was written.
+**Wake-nudge (optional latency optimization only):** OpenClaw agent-to-agent messaging (`sessions_send`) is retained solely so `project-lead` can *nudge* a sleeping agent to run its heartbeat sooner. A nudge carries **no message content** — the content is always the board comment. An agent that receives a nudge simply runs `board_get_unread`. Never put a handoff/question/escalation payload in a `sessions_send` call.
 
 ---
 
@@ -360,10 +389,10 @@ This rule survives session resets. It is never overridden, even if a new session
 
 ## 14. Frontend–backend contract compatibility
 
-1. **Architect commits generated API contracts first.** Before any feature work starts, the `.architecture/contracts/` directory (inside the relevant `code`-type repo, at the path declared in `folder-structure.md`) must contain the generated client matching the current `openapi.yaml`. Developers consume the client — they do not hand-roll HTTP calls.
-2. **Architect runs a compatibility audit** on every PR that touches `openapi.yaml` or `data-model.md`. The audit handoff goes to both backend and frontend.
+1. **Architect commits generated API contracts first.** Before any feature work starts, the `.architecture/contracts/` directory (inside the relevant `code`-type repo, at the path declared in `folder-structure.md`) must contain the generated client matching the current `architecture/api/<service>/openapi.yaml`. Developers consume the client — they do not hand-roll HTTP calls.
+2. **Architect runs a compatibility audit** on every PR that touches any `api/<service>/openapi.yaml` or `data-model.md`. The audit is posted as a `handoff` comment (with `notify`) to both backend and frontend.
 3. **QA verifies contract compatibility** during INTAKE: calls the running API with the generated client's types and confirms the response shapes match.
-4. **Architect owns the generated contracts** — no developer edits `.architecture/contracts/**` directly. If a contract is wrong, file a `question` to the architect.
+4. **Architect owns the generated contracts** — no developer edits `.architecture/contracts/**` directly. If a contract is wrong, post a `question` comment to the architect.
 5. Frontend and backend are considered **incompatible** if the generated API client cannot compile cleanly against the current backend codebase. This blocks QA from marking the Story testable.
 
 ---

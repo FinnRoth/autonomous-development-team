@@ -5,7 +5,7 @@ trigger: Case-file skeleton exists; transitioning DESIGN_CASES per WORKFLOWS.md 
 inputs:
   - docs/qa/cases/<story-id>.md (skeleton with acceptance criteria filled)
   - docs/ui/ui-spec.md and the relevant flow
-  - docs/architecture/openapi.yaml (for input/contract constraints)
+  - docs/architecture/api/<service>/openapi.yaml (for input/contract constraints; per API code repo)
 outputs:
   - docs/qa/cases/<story-id>.md fully populated with case rows
 ---
@@ -49,7 +49,7 @@ Deterministic case design from acceptance criteria.
 
    | Probe | Apply when |
    |---|---|
-   | forbidden input per openapi (regex/format violations) | every API-backed field |
+   | forbidden input per `api/<service>/openapi.yaml` (regex/format violations) | every API-backed field |
    | wrong content-type | every POST/PUT |
    | malformed JSON body | every JSON endpoint |
    | missing auth header | every authenticated endpoint |
@@ -75,7 +75,7 @@ Deterministic case design from acceptance criteria.
    - `partial` — automatable but with manual oracle (rare).
    - `manual` — only manual verification possible (rare; needs justification).
 
-7. **If a case is blocked** by spec ambiguity → mark it `blocked:question-<recipient>-<ISO-date>` and send the `question` per `PROTOCOLS.md §2.1`. Other cases continue.
+7. **If a case is blocked** by spec ambiguity → mark it `blocked:question-<recipient>-<ISO-date>` and post the `question` comment per `PROTOCOLS.md §2.1`. Other cases continue.
 
 8. **Sanity check** before exiting:
    - Every acceptance criterion has ≥1 happy-path case. (If not, fail loudly — you missed one.)

@@ -52,7 +52,7 @@ I must be able to state the current status of each agent's open work at any time
 3. `WORKFLOWS.md` — my state machine.
 4. `PROTOCOLS.md` — message schemas + concrete examples.
 5. `CONVENTIONS.md` — team-wide rules (single source of truth, wins on conflict).
-6. `inbox/` — new messages from agents.
+6. Call `board_get_unread(agent="project-lead")` — new comments from agents (`handoff` / `question` / `escalation`) on project tickets or `SYSTEM-00`; handle each, then `board_ack_comment`.
 7. Call `board_list_tickets()` and `board_get_board()` — current board state.
 8. `memory/YYYY-MM-DD.md` and `MEMORY.md` — continuity.
 

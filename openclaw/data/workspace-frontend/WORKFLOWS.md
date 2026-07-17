@@ -19,23 +19,23 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
 
 ---
 
-## State 1 — SCAN_INBOX
+## State 1 — SCAN_COMMENTS
 
-- **Name:** `SCAN_INBOX`
+- **Name:** `SCAN_COMMENTS`
 - **Entry condition:** Session wake; not in STANDBY.
-- **Exit condition:** Inbox processed; ready to look at the board.
+- **Exit condition:** Unread comments processed; ready to look at the board.
 - **Actions:**
-  1. List `inbox/*.json` sorted by ISO timestamp ascending.
-  2. For each message:
+  1. Call `board_get_unread(agent="frontend")` — the comments addressed to me since last wake, ordered by the API.
+  2. For each comment:
      - `handoff` with `ticket_id` → enqueue for CLAIM_TASK if it concerns me.
      - `question` reply → unblock the corresponding paused ticket (move from `blocked` back to my workflow).
      - `escalation` reply → apply project-lead's decision; resume work.
      - Reviewer change request notification → enqueue ADDRESS_REVIEW for that PR.
      - QA bug `handoff` → treat as new ticket (CLAIM_TASK).
-  3. Archive processed messages by moving to `inbox/archive/`. Never delete (CONVENTIONS.md §5).
+  3. Call `board_ack_comment(comment_id=<id>, agent="frontend")` on each comment after handling it — this clears it from `board_get_unread`.
   4. Call `board_get_ready_tickets(owner=frontend)` to find tickets eligible for CLAIM_TASK. If any returned tickets have all `depends_on` done, enqueue the highest-priority one for CLAIM_TASK.
 - **Output artifacts:** Updated todo queue (in-memory + `memory/YYYY-MM-DD.md` log).
-- **On error:** Malformed message → log to `memory/YYYY-MM-DD.md`, file `escalation` severity=`low` to project-lead, continue.
+- **On error:** Malformed comment → `board_ack_comment` it, log to `memory/YYYY-MM-DD.md`, post an `escalation` comment severity=`low` to project-lead, continue.
 
 ---
 
@@ -45,9 +45,9 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
 - **Entry condition:** A ticket is `ready`, owner is `frontend` (or `unassigned` and I'm picking it up via project-lead handoff), and all `depends_on` are `done`.
 - **Exit condition:** Ticket status moved to `in_progress`, branch created and checked out.
 - **Actions:**
-  1. Call `board_claim_ticket(ticket_id=<ID>, agent="frontend")`. On 409, log reason and return to SCAN_INBOX. On 200, extract `acceptance`, `body`, and `depends_on` from the response.
-  2. Verify every `depends_on` is `status: done` (confirmed by board-api response). If not, refuse — leave `ready`, log reason, return to SCAN_INBOX (CONVENTIONS.md §6.9).
-  3. Read all `consumed artifacts` listed in `ROLE.md` that the ticket references: `ui-spec.md` § cited, `docs/ui/pages/P-NN.md`, `components.md`, `design-tokens.json`, `openapi.yaml` (if endpoint involved), generated client.
+  1. Call `board_claim_ticket(ticket_id=<ID>, agent="frontend")`. On 409, log reason and return to SCAN_COMMENTS. On 200, extract `acceptance`, `body`, and `depends_on` from the response.
+  2. Verify every `depends_on` is `status: done` (confirmed by board-api response). If not, refuse — leave `ready`, log reason, return to SCAN_COMMENTS (CONVENTIONS.md §6.9).
+  3. Read all `consumed artifacts` listed in `ROLE.md` that the ticket references: `ui-spec.md` § cited, `docs/ui/pages/P-NN.md`, `components.md`, `design-tokens.json`, `docs/architecture/api/<service>/openapi.yaml` (if an endpoint is involved; `<service>` = the code repo per `project/repos.md`), generated client.
   4. Confirm acceptance is testable from FE. If any acceptance is server-only or untestable, file `escalation` severity=`med` to project-lead.
   5. Run `claim-task` skill: create branch `frontend/<TICKET-ID>-<slug>` from `main`, push, set upstream.
 - **Output artifacts:** Branch on `project/`; ticket status update in board-api.
@@ -62,7 +62,7 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
 - **Exit condition:** All acceptance criteria addressable in code; ready for tests and self-review.
 - **Actions:**
   1. For each page in the ticket, run `scaffold-page` for each `P-NN`. The page file gets a top-of-file comment `// Spec: P-NN — docs/ui/pages/P-NN.md` and stubs for all five states.
-  2. For each component referenced that doesn't yet exist, check `docs/ui/components.md`. If listed → run `scaffold-component`. If NOT listed → STOP. File `question` to uiux requesting that the component be added to `components.md` with name, props, tokens, states. Pause this ticket (return to SCAN_INBOX, state `blocked` waiting on uiux).
+  2. For each component referenced that doesn't yet exist, check `docs/ui/components.md`. If listed → run `scaffold-component`. If NOT listed → STOP. Post a `question` comment to uiux requesting that the component be added to `components.md` with name, props, tokens, states. Pause this ticket (return to SCAN_COMMENTS, state `blocked` waiting on uiux).
   3. Wire data with the generated API client at `project/.architecture/contracts/` only. If the endpoint or response shape doesn't fit the UI, STOP — file `question` to architect, pause ticket as `blocked`.
   4. Use tokens from `docs/ui/design-tokens.json` exclusively. If a needed token is missing → STOP, `question` to uiux for the token, pause as `blocked`.
   5. Implement all five states for every async surface, matching `docs/ui/states.md`.
@@ -125,8 +125,8 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
   2. Run `open-pr` skill: PR title `[<TICKET-ID>] <imperative>`, body using the PR template in `ROLE.md` (Ticket → Acceptance verbatim → UI Conformance → Tests → Spec references).
   3. Attach: tokens-lint output (0 violations), axe-check output (0 violations), states-matrix coverage table, Figma frame links.
   4. Call `board_transition_ticket(ticket_id=<TICKET-ID>, to=in_review)`.
-  5. Send `handoff` to `reviewer` with `ticket_id`, `artifact_paths: [PR URL, P-NN paths]`, `acceptance: [reviewer verdict within 1 cycle]`.
-- **Output artifacts:** PR; `outbox/<ISO>-reviewer-handoff.json`.
+  5. Post a `handoff` comment to `reviewer`: `board_add_comment(ticket_id=<TICKET-ID>, author="frontend", to="reviewer", type="handoff", ...)` with the PR URL, the P-NN paths, and the acceptance (reviewer verdict within 1 cycle) as prose in the body. See `PROTOCOLS.md` §S1.
+- **Output artifacts:** PR; a `handoff` comment to reviewer on board-api.
 - **On error:** Push rejected → rebase onto `main`, fix conflicts (only in `project/frontend/**`), retry. If conflicts touch areas I don't own, `escalation` to project-lead.
 
 ---
@@ -167,8 +167,8 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
   1. Confirm merge commit lands on `main`.
   2. Delete my feature branch (only mine — CONVENTIONS.md §6.3).
   3. Call `board_transition_ticket(ticket_id=<TICKET-ID>, to=qa)`. Update ticket `status: qa`.
-  4. Send `handoff` to `qa` with `ticket_id`, merge SHA, acceptance criteria, list of touched routes (`P-NN`s), and any test gaps QA should cover.
-- **Output artifacts:** `outbox/<ISO>-qa-handoff.json`; updated ticket.
+  4. Post a `handoff` comment to `qa`: `board_add_comment(ticket_id=<TICKET-ID>, author="frontend", to="qa", type="handoff", ...)` with the merge SHA, acceptance criteria, list of touched routes (`P-NN`s), and any test gaps QA should cover — all as prose in the body. See `PROTOCOLS.md` §S2.
+- **Output artifacts:** `handoff` comment to qa on board-api; updated ticket.
 - **On error:** Branch already deleted upstream → fine. Merge reverted → return to IMPLEMENT, document in `memory/`.
 
 ---
@@ -188,13 +188,13 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
 
 ## Side state — BLOCKED
 
-- **Entry condition:** I filed a `question` or `escalation` whose answer is required to continue.
-- **Exit condition:** Reply arrives via `inbox/`.
+- **Entry condition:** I posted a `question` or `escalation` comment whose answer is required to continue.
+- **Exit condition:** Reply arrives as a comment (seen via `board_get_unread`).
 - **Actions:**
   1. Update ticket `status: blocked`, append a note: which question, who is blocking, ISO timestamp.
-  2. Stop work on that ticket; return to SCAN_INBOX to pick up other unblocked work or claim a different `ready` ticket if any.
+  2. Stop work on that ticket; return to SCAN_COMMENTS to pick up other unblocked work or claim a different `ready` ticket if any.
 - **Output artifacts:** Updated ticket note.
-- **On error:** Block persists > 1 cycle → escalate to project-lead severity=`med`.
+- **On error:** Block persists > 1 cycle → post an `escalation` comment to project-lead severity=`med`.
 
 ---
 
@@ -203,7 +203,7 @@ My work is a strict state machine. One ticket = one branch = one PR. I run state
 ```
 SESSION_WAKE
    → STANDBY? → STOP
-   → SCAN_INBOX
+   → SCAN_COMMENTS
        → CLAIM_TASK (if a ticket is ready for me)
            → IMPLEMENT
                → TEST

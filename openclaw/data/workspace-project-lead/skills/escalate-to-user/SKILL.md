@@ -3,7 +3,7 @@ name: escalate-to-user
 description: Format an escalation message to the user and post it via the user channel; record it in the decision log as pending.
 trigger: Scope/budget/deadline change needed; architect feasibility blocker beyond my authority; QA P0/P1 risking deadline; any agent-to-agent deadlock I cannot break; user input genuinely required.
 inputs: A subject, options (≥2), and optionally my recommendation.
-outputs: outbound escalation message to user; entry in decision-log.md as pending_user_confirmation; entry in handoff-log.md.
+outputs: user-facing escalation message sent via chat; entry in decision-log.md as pending_user_confirmation.
 ---
 
 # escalate-to-user — deterministic procedure
@@ -39,25 +39,21 @@ Quality rules:
 2. Never present three options that all favor the same outcome — at least two must be meaningfully different.
 3. Use the user's words from the most recent Q&A or chat whenever I'm referencing prior intent.
 
-## Step 3 — Write the outbox file
+## Step 3 — Send the message to the user via chat
 
-`outbox/<ISO>-user-escalation.json`:
+I address the user directly in **chat** — never via a board-api comment (`to: "user"` is not valid) and never via a file. Compose a scannable message from the fields above:
 
-```json
-{
-  "type": "escalation",
-  "from": "project-lead",
-  "to": "user",
-  "severity": "<low | med | high | blocker>",
-  "summary": "<one-line>",
-  "requested_decision": "<plain ask>",
-  "options": [
-    "Option A: <what we do — gain / give up>",
-    "Option B: <what we do — gain / give up>"
-  ],
-  "recommendation": "<optional; option letter + reason>"
-}
 ```
+**Decision needed (<severity>):** <summary>
+
+- **Option A** — <what we do — gain / give up>
+- **Option B** — <what we do — gain / give up>
+
+My recommendation: **<letter>** — <reason>.
+— Atlas 🧭 (Project Lead)
+```
+
+(When a worker's escalation prompted this, I first read it via `board_get_unread`, `board_ack_comment` it, then relay it to the user here.)
 
 ## Step 4 — Append to decision-log
 
@@ -69,21 +65,15 @@ Append to `docs/project/decision-log.md`:
 
 `D-NNN` is the next decision id (count existing entries + 1).
 
-## Step 5 — Append to handoff-log
+## Step 5 — Commit docs
 
 ```
-<ISO> | project-lead → user | escalation | D-NNN | "<summary>"
-```
-
-## Step 6 — Commit docs
-
-```
-git add docs/project/decision-log.md docs/handoff-log.md
+git add docs/project/decision-log.md
 git commit -m "Escalation D-NNN: <summary>"
 git push
 ```
 
-## Step 7 — Update tracking
+## Step 6 — Update tracking
 
 Append to `memory/escalation-state.json`:
 
@@ -101,14 +91,14 @@ When the user responds, the response goes into the next state's handling (REPLAN
 <ISO> | D-NNN | resolved | <summary> | chosen: <Option A | B | …> | <user verbatim>
 ```
 
-## Step 8 — Pause dependent work
+## Step 7 — Pause dependent work
 
 If severity is `high` or `blocker`:
 1. Identify which tickets are blocked by this decision.
 2. Call `board_transition_ticket(id=<ticket-id>, agent="project-lead", to="blocked")` for each blocked ticket.
-3. Send a courtesy `question` to each blocked owner: "Paused pending user decision D-NNN. ETA on decision: <when>."
+3. Post a courtesy `question` comment to each blocked owner on its ticket: "Paused pending user decision D-NNN. ETA on decision: <when>."
 
-## Step 9 — Reminders
+## Step 8 — Reminders
 
 If user does not reply within the severity SLA:
 - `low` → no reminder; surface in next `weekly-status`.

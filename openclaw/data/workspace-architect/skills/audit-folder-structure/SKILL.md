@@ -42,7 +42,7 @@ outputs:
    - `## Matched` — count only (no list, to keep report short).
    - `## Verdict` — `zero-drift` or `drift-detected`.
 7. If verdict is `drift-detected`:
-   - Send a `handoff` to `project-lead` summarizing the drift. PL decides whether to forward as a task to backend/frontend or to me (for folder-structure.md update).
+   - Post a `handoff` comment to `project-lead` summarizing the drift. PL decides whether to forward as a task to backend/frontend or to me (for folder-structure.md update).
    - Exit non-zero.
 8. If verdict is `zero-drift`, exit 0.
 9. Append `memory/YYYY-MM-DD.md`: `audit-folder-structure → <verdict>`.

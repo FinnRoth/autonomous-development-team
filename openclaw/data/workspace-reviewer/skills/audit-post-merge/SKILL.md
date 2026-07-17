@@ -3,7 +3,7 @@ name: audit-post-merge
 description: Audit a merged PR for fixup commits inserted between approval and merge; flag any divergence.
 trigger: WORKFLOWS.md State 6 (POST_MERGE_AUDIT) — invoked by IDLE when a prior approval is ≥24h old (or on-demand by project-lead).
 inputs: pr_number, ticket_id, approval_sha (head SHA at the moment of my APPROVE), merge_sha (the squash-merge commit SHA on default branch)
-outputs: a marker appended to docs/reviews/review-log.md (`| audited-clean` | `| audited-flagged: <esc-id>` | `| audited-unavailable`); possibly an escalation message.
+outputs: a marker appended to docs/reviews/review-log.md (`| audited-clean` | `| audited-flagged: <comment-id>` | `| audited-unavailable`); possibly an escalation comment.
 ---
 
 ## Procedure
@@ -12,7 +12,7 @@ outputs: a marker appended to docs/reviews/review-log.md (`| audited-clean` | `|
 
 1. `git -C project fetch origin <default-branch>`.
 2. `git -C project show --no-patch --format='%H %P %s' <merge_sha>`.
-3. Verify the commit exists on the default branch. If not → record `audited-unavailable` and `escalation` `low` to project-lead.
+3. Verify the commit exists on the default branch. If not → record `audited-unavailable` and post an `escalation` comment (severity `low`) to project-lead.
 
 ### Step 2 — Identify the branch tip at approval vs at merge
 
@@ -45,35 +45,35 @@ For each commit in `extra_commits`:
    - Append to the PR's row in `review-log.md`: ` | audited-clean (N trivial fixups)`.
    - Exit.
 2. If any `extra_commits` is `substantive`:
-   - Compose an `escalation` to `project-lead` (see template below).
-   - Capture the returned escalation id.
-   - Append to the PR's row: ` | audited-flagged: <esc-id>`.
+   - Post an `escalation` comment to `project-lead` (see template below).
+   - Capture the returned comment id.
+   - Append to the PR's row: ` | audited-flagged: <comment-id>`.
 
 ### Step 6 — Escalation template (Step 5 substantive case)
 
-```json
-{
-  "type": "escalation",
-  "from": "reviewer",
-  "to": "project-lead",
-  "severity": "high",
-  "summary": "Post-merge audit of PR #<num> found <N> substantive commits between my approval (<approval-sha-short>) and the squash-merge (<merge-sha-short>) that I did not review.",
-  "requested_decision": "decide remediation (revert / patch-and-re-review / accept)",
-  "options": [
-    "revert merge <merge-sha> and reopen PR for re-review",
-    "leave merged; open follow-up ticket to re-validate the un-reviewed diff",
-    "accept and document the exception in docs/reviews/rules.md"
-  ],
-  "recommendation": "option 1 — preserves the invariant that nothing un-reviewed reaches the default branch"
-}
+```
+board_add_comment(
+  ticket_id="<TICKET-ID>",
+  author="reviewer",
+  to="project-lead",
+  type="escalation",
+  body="severity: high. Post-merge audit of PR #<num> found <N> substantive commits between my "
+       "approval (<approval-sha-short>) and the squash-merge (<merge-sha-short>) that I did not "
+       "review. Substantive commit SHAs + one-line summaries: <list here>. "
+       "Requested decision: decide remediation (revert / patch-and-re-review / accept). Options: "
+       "(a) revert merge <merge-sha> and reopen PR for re-review; "
+       "(b) leave merged; open a follow-up ticket to re-validate the un-reviewed diff; "
+       "(c) accept and document the exception in docs/reviews/rules.md. "
+       "Recommendation: (a) — preserves the invariant that nothing un-reviewed reaches the default branch."
+)
 ```
 
-Attach to the escalation a list of the substantive commit SHAs and one-line summaries (in the `summary` field, continued).
+Capture the returned `comment_id` — that is the `<comment-id>` used in the `audited-flagged` marker.
 
 ### Step 7 — Commit + push the log
 
 1. `git -C docs add docs/reviews/review-log.md`.
-2. `git -C docs commit -m "[reviewer] audit PR #<num>: <audited-clean|audited-flagged:<esc-id>>"`.
+2. `git -C docs commit -m "[reviewer] audit PR #<num>: <audited-clean|audited-flagged:<comment-id>>"`.
 3. `git -C docs push origin <default-branch>`.
 
 ### Step 8 — Clear the pending marker

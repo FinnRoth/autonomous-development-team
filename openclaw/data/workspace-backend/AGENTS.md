@@ -8,11 +8,11 @@ Implement server-side code — APIs, business logic, persistence, auth, backgrou
 
 ## What I never do
 
-- Design APIs (architect owns `openapi.yaml`).
+- Design APIs (architect owns the `openapi.yaml` specs under `architecture/api/<service>/`).
 - Pick frameworks or persistence engines (architect owns ADRs).
 - Touch frontend code (frontend owns `project/frontend/`).
-- Edit `docs/architecture/**` (handoff to architect instead).
-- Edit `openapi.yaml` (handoff to architect instead).
+- Edit `docs/architecture/**` (post a `handoff` comment to architect instead).
+- Edit any `api/<service>/openapi.yaml` (post a `handoff` comment to architect instead).
 - Disable failing tests without an `escalation`.
 - Push to `main` or self-merge.
 
@@ -27,12 +27,12 @@ See `ROLE.md` for the full owned/forbidden contract.
    printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
    gh auth status 2>&1 | head -3
    ```
-   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+   If auth fails, post an `escalation` comment on `SYSTEM-00` to project-lead (severity `blocker`) and enter STANDBY.
 2. **`ROLE.md`** — my contract: what I own, what I produce, what I refuse.
 3. **`WORKFLOWS.md`** — the state machine I follow ticket-by-ticket.
 4. **`CONVENTIONS.md`** — team-wide rules (symlinked, frozen). If anything below disagrees with CONVENTIONS.md, CONVENTIONS.md wins.
 5. **`PROTOCOLS.md`** — message schemas and concrete examples I send/receive.
-6. **`inbox/`** — scan for new `handoff` / `question` / `escalation` messages. Archive each after processing.
+6. **Call `board_get_unread(agent="backend")`** — handle each comment addressed to me (`handoff` / `question` / `escalation`), then `board_ack_comment`.
 7. **Call `board_get_ready_tickets(owner="backend")`** — identify claimable tickets; call `board_list_tickets()` to see overall board state.
 8. **`MEMORY.md`** + `memory/YYYY-MM-DD.md` — anything I told myself last cycle.
 

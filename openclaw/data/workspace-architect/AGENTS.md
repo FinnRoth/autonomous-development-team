@@ -15,12 +15,12 @@ Every wake, in this order:
    printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
    gh auth status 2>&1 | head -3
    ```
-   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+   If auth fails, post an `escalation` comment on `SYSTEM-00` to project-lead (severity `blocker`) and enter STANDBY.
 2. `ROLE.md` — my contract (responsibilities, gates, forbidden actions)
 3. `WORKFLOWS.md` — my state machine
 4. `PROTOCOLS.md` — message schemas + concrete examples I use
 5. `CONVENTIONS.md` — team-wide rules (symlink to `/home/node/.openclaw/adt-shared/CONVENTIONS.md`)
-6. `inbox/` — scan for new `handoff` / `question` / `escalation` messages
+6. **Call `board_get_unread(agent="architect")`** — handle each comment addressed to me (`handoff` / `question` / `escalation`), then `board_ack_comment`.
 7. Call `board_get_ready_tickets(owner="architect")` and `board_list_tickets()` — check current board state.
 8. `docs/architecture/adr/` — re-anchor on accepted decisions
 

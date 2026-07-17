@@ -1,8 +1,8 @@
 ---
 name: scaffold-endpoint
-description: From an openapi.yaml operationId, generate route + handler + test stub in the correct folder per docs/architecture/folder-structure.md.
+description: From an api/<service>/openapi.yaml operationId, generate route + handler + test stub in the correct folder per docs/architecture/folder-structure.md.
 trigger: IMPLEMENT state: a new operationId from the assigned ticket needs a handler that does not yet exist.
-inputs: OPERATION_ID (string matching an operationId in openapi.yaml), TICKET_ID
+inputs: OPERATION_ID (string matching an operationId in the service's openapi.yaml), TICKET_ID
 outputs: route file, handler file, test stub — all under project/backend/**.
 ---
 
@@ -10,7 +10,7 @@ outputs: route file, handler file, test stub — all under project/backend/**.
 
 Deterministic procedure.
 
-1. **Locate the operation** in `docs/contracts/openapi.yaml`.
+1. **Locate the operation** in `docs/<docs-repo-name>/architecture/api/<service>/openapi.yaml` (`<service>` = the code repo per repos.md).
    - Find the unique path+method whose `operationId == OPERATION_ID`.
    - Extract: HTTP method, path, parameters (path/query/header), request body schema ref, response schemas per status code, security requirements.
    - On not found: STOP, file `question` to architect.
@@ -44,7 +44,7 @@ Deterministic procedure.
 
 8. **Create the test stub** at the mirrored path under `project/backend/tests/`.
    - One `describe` per operation.
-   - One `it` for each documented response status code in openapi.yaml.
+   - One `it` for each documented response status code in the service's openapi.yaml.
    - One `it` per acceptance criterion from the ticket.
    - Each `it` body starts with `// arrange / act / assert` comments and an explicit `expect.fail("not implemented")` (or framework equivalent) so a run will list every unwritten test.
 

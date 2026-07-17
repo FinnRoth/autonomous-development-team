@@ -22,10 +22,9 @@ All MCP servers below are declared here; wiring happens in a later step. I never
   - `code/<repo-name>/` — code repos, branch prefix `architect/<TICKET-ID>-<slug>` (contracts and skeleton only)
 - **Forbidden ops:** `push --force` on `main`/`develop`/release; deleting branches I do not own (CONVENTIONS.md §6.2–§6.3). Never self-merge.
 
-### `openclaw-messaging`
-- Used to send/receive `handoff`, `question`, `escalation` (CONVENTIONS.md §4).
-- Outgoing → `outbox/<ISO>-<to>-<type>.json`.
-- Incoming → polled from `inbox/`; archive after processing, never delete.
+### Messaging — via `board-api` comments
+- **Purpose:** all agent-to-agent messages (`handoff`, `question`, `escalation`) — CONVENTIONS.md §4. Post with `board_add_comment` (fields: `to`, `type` ∈ `handoff|question|escalation|info`, `notify`, `from_ticket`); read with `board_get_unread(agent="architect")`; clear with `board_ack_comment`.
+- A comment is delivered the instant board-api stores it (CONVENTIONS.md §12). My role-specific examples live in `PROTOCOLS.md`.
 
 ### `context7`
 - For up-to-date library/framework docs (language runtimes, ORMs, validation libs, auth libs, API frameworks).
@@ -49,7 +48,7 @@ _(Populated after `onboard-project` runs. Currently STANDBY — see CONVENTIONS.
 
 - Docs repo slug: _unset_
 - Code repo slugs: _unset_
-- OpenAPI path: _unset_
+- OpenAPI paths (one per service): _unset_ (`architecture/api/<service>/openapi.yaml` per `project/repos.md`)
 - Contracts generator command: _unset_
 
 ## board-api-workers
@@ -62,7 +61,9 @@ Task board API. Authoritative structured ticket store for ADT.
 - `board_get_ticket` — read full ticket details + comments
 - `board_list_tickets` — list tickets with status/owner/type filters
 - `board_transition_ticket` — transition ticket status
-- `board_add_comment` — add comment or question to ticket thread
+- `board_add_comment` — post a `handoff`/`question`/`escalation`/`info` comment (the messaging channel); set `to`, `notify`, `from_ticket`
+- `board_get_unread` — poll for comments addressed to me (heartbeat notification)
+- `board_ack_comment` — mark a comment read/handled
 - `board_get_board` — full board snapshot
 - `board_get_deps` — check dependency status
 

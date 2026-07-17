@@ -1,9 +1,9 @@
 ---
 name: triage-bug
 description: Classify an incoming QA bug report into priority/owner/parent-story; create a BUG-* ticket in board-api; dispatch handoff to fix owner.
-trigger: Inbox contains a `handoff` from `qa` with a path under `docs/qa/bug-reports/`.
-inputs: The QA bug-report markdown file path (from handoff.artifact_paths). The current board state.
-outputs: BUG-NN ticket created in board-api, outbound handoff to the fix owner, possible escalation to user if P0/P1 threatens deadline.
+trigger: `board_get_unread` returns a `handoff` comment from `qa` referencing a bug report under `docs/qa/bug-reports/`.
+inputs: The QA bug-report markdown file path (from the handoff comment body). The current board state.
+outputs: BUG-NN ticket created in board-api, a handoff comment to the fix owner, possible escalation to user if P0/P1 threatens deadline.
 ---
 
 # triage-bug — deterministic procedure
@@ -83,27 +83,21 @@ If the new bug's priority is P0 or P1 AND there is an Epic with a deadline withi
 
 ## Step 7 — Dispatch handoff to owner
 
-Write `outbox/<ISO>-<owner>-handoff.json`:
+Post a `handoff` comment on the BUG ticket addressed to the fix owner:
 
-```json
-{
-  "type": "handoff",
-  "from": "project-lead",
-  "to": "<owner>",
-  "ticket_id": "BUG-NN",
-  "artifact_paths": [
-    "<docs/qa/bug-reports/...md>"
-  ],
-  "summary": "<bug summary>; priority <P>; QA repro provided.",
-  "acceptance": [
-    "Steps to reproduce no longer reproduce",
-    "Regression test added (qa owns post-fix)"
-  ],
-  "blocking_questions": []
-}
+```
+board_add_comment(
+  ticket_id="BUG-NN",
+  author="project-lead",
+  to="<owner>",
+  type="handoff",
+  body="<bug summary>; priority <P>; QA repro provided at <docs/qa/bug-reports/...md>. "
+       "Acceptance: (1) steps to reproduce no longer reproduce; "
+       "(2) regression test added (qa owns post-fix)."
+)
 ```
 
-Append to `docs/handoff-log.md`.
+The comment is the record (CONVENTIONS.md §12).
 
 ## Step 8 — Transition ticket to ready
 
@@ -115,29 +109,19 @@ board_update_ticket({ id: "BUG-NN", status: "ready" })
 
 If a Story status must move to `blocked` because of this bug, update it via `board_update_ticket` as well.
 
-## Step 9 — Commit handoff log
+## Step 9 — Acknowledge qa
+
+Post a `handoff` comment on the BUG ticket addressed to qa:
 
 ```
-git add docs/handoff-log.md
-git commit -m "[BUG-NN] Triage <summary> (P<n>, owner=<agent>)"
-git push
-```
-
-## Step 10 — Acknowledge qa
-
-Write `outbox/<ISO>-qa-handoff.json` acknowledgement:
-
-```json
-{
-  "type": "handoff",
-  "from": "project-lead",
-  "to": "qa",
-  "ticket_id": "BUG-NN",
-  "artifact_paths": [],
-  "summary": "Triaged: priority <P>, owner <agent>. Await fix; please prepare regression test.",
-  "acceptance": ["qa drafts regression test referencing BUG-NN once fix is in_review"],
-  "blocking_questions": []
-}
+board_add_comment(
+  ticket_id="BUG-NN",
+  author="project-lead",
+  to="qa",
+  type="handoff",
+  body="Triaged: priority <P>, owner <agent>. Await fix; please prepare the regression test. "
+       "Acceptance: qa drafts a regression test referencing BUG-NN once the fix is in_review."
+)
 ```
 
 ## On-error

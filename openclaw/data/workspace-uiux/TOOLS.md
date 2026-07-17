@@ -6,7 +6,7 @@ I am `uiux`. I have access to the following MCP servers. Scopes are declared her
 
 - **Scope (root):** `/home/node/.openclaw/workspace-uiux/`
 - **Mode:** read+write
-- **Use:** read/write everything inside my own workspace — `docs/` clone, `inbox/`, `outbox/`, `memory/`, `skills/`, and the `ROLE.md` / `WORKFLOWS.md` / `PROTOCOLS.md` / `SOUL.md` / `IDENTITY.md` / `USER.md` / `MEMORY.md` files.
+- **Use:** read/write everything inside my own workspace — `docs/` clone, `memory/`, `skills/`, and the `ROLE.md` / `WORKFLOWS.md` / `PROTOCOLS.md` / `SOUL.md` / `IDENTITY.md` / `USER.md` / `MEMORY.md` files. Agent-to-agent messages are board-api comments (§ board-api-workers below).
 - **Forbidden:** anything under `/home/node/.openclaw/workspace-<other>/`. I never reach into another agent's workspace (CONVENTIONS.md §6.1).
 
 ## 2. `git` — docs repo only
@@ -17,13 +17,14 @@ I am `uiux`. I have access to the following MCP servers. Scopes are declared her
 - **Forbidden:**
   - I do NOT clone `<project>` (the code repo). I never need it.
   - Never `git push --force` to any shared branch (CONVENTIONS.md §6.2).
-  - Never edit `docs/architecture/openapi.yaml` or `docs/architecture/data-model.md` (file a `question` to architect instead).
+  - Never edit `docs/architecture/api/<service>/openapi.yaml` or `docs/architecture/data-model.md` (post a `question` comment to architect instead).
   - Never write to `docs/tickets/` — that directory does not exist. Tickets are in board-api only.
 
-## 3. `openclaw-messaging` — agent-to-agent JSON gateway
+## 3. Messaging — via `board-api` comments
 
-- **Use:** write `outbox/<ISO>-<to>-<type>.json` and let the gateway mirror into the recipient's `inbox/`. Read my own `inbox/`.
+- **Use:** all agent-to-agent messages. Post with `board_add_comment` (fields: `to`, `type` ∈ `handoff|question|escalation|info`, `notify`, `from_ticket`); read with `board_get_unread(agent="uiux")`; clear with `board_ack_comment`.
 - **Message types:** `handoff`, `question`, `escalation` (CONVENTIONS.md §4, PROTOCOLS.md).
+- A comment is delivered the instant board-api stores it (CONVENTIONS.md §12).
 - **Forbidden:** sending `to: "user"` — that field is invalid from `uiux`. Only `project-lead` may set `to: "user"` (CONVENTIONS.md §4.3).
 
 ## 4. `figma` — design read/write
@@ -58,7 +59,9 @@ Task board API. Authoritative structured ticket store for ADT.
 - `board_get_ticket` — read full ticket details + comments
 - `board_list_tickets` — list tickets with status/owner/type filters
 - `board_transition_ticket` — transition ticket status
-- `board_add_comment` — add comment or question to ticket thread
+- `board_add_comment` — post a `handoff`/`question`/`escalation`/`info` comment (the messaging channel); set `to`, `notify`, `from_ticket`
+- `board_get_unread` — poll for comments addressed to me (heartbeat notification)
+- `board_ack_comment` — mark a comment read/handled
 - `board_get_board` — full board snapshot
 - `board_get_deps` — check dependency status
 

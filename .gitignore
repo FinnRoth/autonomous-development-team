@@ -33,8 +33,6 @@ docker-compose.yml
 /openclaw/data/workspace-*/memory/*.md
 /openclaw/data/workspace-*/MEMORY.md
 /openclaw/data/workspace-project-lead/USER.md
-/openclaw/data/workspace-*/inbox/*
-/openclaw/data/workspace-*/outbox/*
 /openclaw/data/workspace-*/code/*
 /openclaw/data/workspace-*/docs/*
 /openclaw/data/workspace-*/misc/*
@@ -44,8 +42,6 @@ docker-compose.yml
 
 # Restore sentinels
 !/openclaw/data/workspace-*/memory/.gitkeep
-!/openclaw/data/workspace-*/inbox/.gitkeep
-!/openclaw/data/workspace-*/outbox/.gitkeep
 !/openclaw/data/workspace-*/code/.gitkeep
 !/openclaw/data/workspace-*/docs/.gitkeep
 !/openclaw/data/workspace-*/misc/.gitkeep

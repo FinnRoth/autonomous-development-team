@@ -155,16 +155,53 @@ TOOLS = [
     ),
     Tool(
         name="board_add_comment",
-        description="Add a comment or question to a ticket thread.",
+        description=(
+            "Post a comment on a ticket. This is the agent-to-agent messaging channel. "
+            "Types: 'handoff', 'question', 'escalation' are actionable "
+            "and REQUIRE a 'to' recipient; 'info'/'comment' are non-actionable notes. Set 'notify' "
+            "to also flag additional agents. Set 'from_ticket' on a handoff to reference the source ticket."
+        ),
         inputSchema={
             "type": "object",
             "properties": {
-                "ticket_id": {"type": "string"},
-                "author": {"type": "string"},
-                "type": {"type": "string", "enum": ["comment", "question", "status_change"]},
+                "ticket_id": {"type": "string", "description": "Ticket the comment is posted on (the destination ticket for a handoff)"},
+                "author": {"type": "string", "description": "Your agent role id"},
+                "type": {
+                    "type": "string",
+                    "enum": ["handoff", "question", "escalation", "info", "comment", "status_change"],
+                },
                 "body": {"type": "string"},
+                "to": {"type": "string", "description": "Recipient agent role id — required for handoff/question/escalation"},
+                "notify": {"type": "array", "items": {"type": "string"}, "description": "Additional agent role ids to notify"},
+                "from_ticket": {"type": "string", "description": "Source ticket id for a cross-ticket handoff (optional)"},
             },
             "required": ["ticket_id", "author", "body"],
+        },
+    ),
+    Tool(
+        name="board_get_unread",
+        description=(
+            "Get comments addressed to you (via 'to' or 'notify') that you have not yet acked. "
+            "This is the heartbeat notification poll agents run to find comments addressed to them. "
+            "Each result carries its parent ticket's id, title, and status. After handling a comment, "
+            "call board_ack_comment."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {"agent": {"type": "string", "description": "Your agent role id"}},
+            "required": ["agent"],
+        },
+    ),
+    Tool(
+        name="board_ack_comment",
+        description="Mark a comment as read/handled by you. Idempotent. Removes it from your board_get_unread results.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "comment_id": {"type": "integer"},
+                "agent": {"type": "string", "description": "Your agent role id"},
+            },
+            "required": ["comment_id", "agent"],
         },
     ),
     Tool(
@@ -233,6 +270,14 @@ def _dispatch(name: str, args: dict) -> Any:
     elif name == "board_add_comment":
         ticket_id = args.pop("ticket_id")
         status, body = http_post(f"/tickets/{ticket_id}/comments", args)
+        return {"status_code": status, "body": body}
+
+    elif name == "board_get_unread":
+        agent = args["agent"]
+        return http_get(f"/agents/{urllib.parse.quote(agent)}/unread")
+
+    elif name == "board_ack_comment":
+        status, body = http_post(f"/comments/{args['comment_id']}/ack", {"agent": args["agent"]})
         return {"status_code": status, "body": body}
 
     elif name == "board_get_deps":

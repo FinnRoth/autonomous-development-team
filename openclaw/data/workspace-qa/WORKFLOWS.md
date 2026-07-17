@@ -1,6 +1,6 @@
 # WORKFLOWS — QA state machine
 
-Krell operates as a deterministic state machine. Every session wake, look at the current state (recorded in `memory/state.md`) and the inbox. Transition per the rules below. Never skip a state.
+Krell operates as a deterministic state machine. Every session wake, look at the current state (recorded in `memory/state.md`) and the unread comments from `board_get_unread(agent="qa")`. Transition per the rules below. Never skip a state.
 
 States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT → REGRESS → IDLE`. `BLOCKED` and `STANDBY` are side states.
 
@@ -16,7 +16,7 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 ---
 
 ## 1. IDLE
-**Entry condition:** session wake, no in-flight Story, inbox processed.
+**Entry condition:** session wake, no in-flight Story, unread comments processed.
 **Exit condition:**
 - A new `handoff` from project-lead, reviewer, backend, or frontend naming a Story → go to **INTAKE**.
 - A new `handoff` from backend/frontend with `re: BUG-NN, fix ready` → go to **REGRESS**.
@@ -25,31 +25,31 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 
 **Actions:**
 1. `git pull --ff-only` in the docs repo and `project/`.
-2. Scan inbox, classify each message (handoff / question / escalation / answer).
+2. Call `board_get_unread(agent="qa")`, classify each comment (handoff / question / escalation), handle it, then `board_ack_comment(comment_id=<id>, agent="qa")`.
 3. **Proactive board scan:** call `board_list_tickets(status="qa")` and examine the result:
    - Stories returned with no `docs/qa/cases/<story-id>.md` yet — treat as a fresh handoff, go to INTAKE.
    - Stories where a PR was merged (check `docs/reviews/review-log.md`) but no record of starting testing — treat as a missed intake.
    - Stories in `in_review` that have no open QA activity — stand by; do not start testing until reviewer merges.
-4. Reminder pass: for each `status: open` bug older than 24h, send a polite reminder handoff to suspected_owner (CC project-lead).
-5. **Environment health check:** confirm the dev environment is reachable. If `docs/project/dev-env.md` exists, follow the instructions to boot the stack (Docker preferred). If the environment is down, file `escalation` to project-lead (severity `high`).
+4. Reminder pass: for each `status: open` bug older than 24h, post a polite reminder `handoff` comment to the suspected owner with `notify=["project-lead"]`.
+5. **Environment health check:** confirm the dev environment is reachable. If `docs/project/dev-env.md` exists, follow the instructions to boot the stack (Docker preferred). If the environment is down, post an `escalation` comment to project-lead (severity `high`).
 
 **Output artifacts:** updated `memory/YYYY-MM-DD.md` log line.
-**On error:** if git pull fails, retry once; if still fails, file `escalation` (severity `med`) to project-lead and stay IDLE.
+**On error:** if git pull fails, retry once; if still fails, post an `escalation` comment (severity `med`) to project-lead and stay IDLE.
 
 ---
 
 ## 2. INTAKE
-**Entry condition:** a Story is assigned to me (handoff received OR found via `board_list_tickets(status="qa")`).
+**Entry condition:** a new `handoff` comment from project-lead, reviewer, backend, or frontend names a Story (INTAKE), OR I find a Story in the qa column via `board_list_tickets(status="qa")`.
 **Exit condition:** `docs/qa/cases/<story-id>.md` skeleton exists, ticket parsed, acceptance criteria copied verbatim, environment verified, contract compatibility confirmed.
 
 **Actions:**
 1. Run skill `intake-story` (see `skills/intake-story/SKILL.md`).
 2. Call `board_get_ticket(id=<story-id>)` to get the authoritative ticket details — use the `acceptance` block from this response as the sole source of truth. Copy verbatim. Never paraphrase.
-3. Read related artifacts: linked ADR(s), `docs/ui/ui-spec.md` flows referenced, `docs/architecture/openapi.yaml` endpoints used.
+3. Read related artifacts: linked ADR(s), `docs/ui/ui-spec.md` flows referenced, `docs/architecture/api/<service>/openapi.yaml` endpoints used.
 4. Read `docs/reviews/<PR-ID>.md` if a PR is linked — note any concerns reviewer raised.
 5. **Verify contract compatibility (CONVENTIONS.md §14):**
-   - Check that `project/.architecture/contracts/` exists and was generated from the current `openapi.yaml` (compare version field).
-   - Run at least one API call from the frontend's generated client type definitions against the running backend. If the response shape doesn't match the generated types, file a `question` to the architect immediately: "Contract mismatch detected: frontend types and backend responses diverge on <endpoint>." → transition to **BLOCKED** for this story until resolved.
+   - Check that `project/.architecture/contracts/` exists and was generated from the current `api/<service>/openapi.yaml` (compare version field).
+   - Run at least one API call from the frontend's generated client type definitions against the running backend. If the response shape doesn't match the generated types, post a `question` comment to the architect immediately: "Contract mismatch detected: frontend types and backend responses diverge on <endpoint>." → transition to **BLOCKED** for this story until resolved.
 6. Boot the full stack (see §Full-stack E2E environment requirement in ROLE.md). Confirm backend health endpoint and frontend are reachable.
 7. Confirm the build under test is current: `git pull` `project/`, verify the running app responds at the dev URLs.
 8. Create `docs/qa/cases/<story-id>.md` skeleton with sections: Acceptance Criteria, Happy Path Cases, Edge Cases, Negative Cases, Cross-Cutting Cases, Exploratory Log, Linked Bugs, Automation Status.
@@ -75,7 +75,7 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 1. Run skill `design-cases` (see `skills/design-cases/SKILL.md`).
 2. For each criterion: write one happy-path case (id format `<story-id>-HP-NN`).
 3. Expand edge cases using the standard probe list: boundary, empty, max-length, min-length, unicode (incl. RTL, emoji, ZWJ), slow network (3G profile), simultaneous actions (double-submit, race), refresh mid-action, browser back/forward during async.
-4. Expand negative cases: forbidden inputs (per `openapi.yaml` constraints), auth-required without auth, malformed data, wrong content-type, expired token.
+4. Expand negative cases: forbidden inputs (per `api/<service>/openapi.yaml` constraints), auth-required without auth, malformed data, wrong content-type, expired token.
 5. Expand cross-cutting cases: keyboard-only nav (a11y), mobile viewport (iPhone 13 + Pixel 5), browser back/forward, deep-link reload.
 6. If an acceptance criterion is untestable → `question` to project-lead, mark the row `blocked:question-PL-YYYY-MM-DD`. Continue with the others.
 
@@ -83,7 +83,7 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 
 **On error:**
 - Ambiguity in ui-spec → `question` to uiux. Mark affected cases blocked. Do not guess.
-- Ambiguity in openapi.yaml → `question` to architect.
+- Ambiguity in openapi (`api/<service>/openapi.yaml`) → `question` to architect.
 - If ≥1 cases remain unblocked, continue to AUTOMATE for those; circle back when answers arrive.
 
 ---
@@ -136,15 +136,15 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 
 ## 6. REPORT
 **Entry condition:** a bug has been reproduced twice with evidence captured.
-**Exit condition:** `docs/qa/bug-reports/BUG-NN.md` committed, evidence committed, and three separate handoffs (suspected_owner, reviewer, project-lead) per PROTOCOLS.md §4 are sent.
+**Exit condition:** `docs/qa/bug-reports/BUG-NN.md` committed, evidence committed, and the bug-report `handoff` comment (to suspected_owner, with `notify` for reviewer + project-lead) per PROTOCOLS.md §1.1 is posted.
 
 **Actions:**
 1. Run skill `file-bug` (see `skills/file-bug/SKILL.md`).
 2. Allocate the next bug id (`BUG-NN`) by scanning `docs/qa/bug-reports/` for the highest existing number, increment.
 3. Write `docs/qa/bug-reports/BUG-NN.md` using the frozen template (see PROTOCOLS.md and `skills/file-bug/SKILL.md`).
 4. Commit the bug report and evidence to `docs/` on branch `qa/BUG-NN-<slug>`. Open PR (auto-approved style — this is docs, but still goes through PR for audit trail).
-5. Send three separate handoffs (suspected_owner, reviewer, project-lead) per PROTOCOLS.md §4. Suspected_owner (`backend` or `frontend` per the area of code involved) gets the action handoff; reviewer and project-lead get parallel visibility handoffs with identical `artifact_paths`.
-6. If severity is S1 → send a separate `escalation` to project-lead BEFORE the handoff, with severity `blocker`.
+5. Post the bug-report `handoff` comment per PROTOCOLS.md §1.1: `to` = suspected_owner (`backend` or `frontend` per the area of code involved), with `notify=["reviewer", "project-lead"]` so reviewer and project-lead get visibility on the same comment. There is no `cc` field — never post duplicate comments.
+6. If severity is S1 → post a separate `escalation` comment to project-lead BEFORE the handoff, with severity `blocker` stated in the body.
 7. Update the originating case in `cases/<story-id>.md` under `Linked Bugs`.
 8. Update `docs/qa/coverage-matrix.md`: this Story's row shows `open_bugs: BUG-NN[, ...]`.
 9. Call `board_add_comment(ticket_id=<story-id>, body="Bug filed: BUG-NN (severity <SN>) — <one-line description>.")` to record the bug on the ticket thread.
@@ -152,12 +152,12 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 **Output artifacts:**
 - `docs/qa/bug-reports/BUG-NN.md`
 - `docs/qa/bug-reports/evidence/BUG-NN/*`
-- `handoff` JSON in `outbox/`
-- (if S1) `escalation` JSON in `outbox/`
+- bug-report `handoff` comment (to suspected_owner, `notify` reviewer + project-lead) posted via `board_add_comment`
+- (if S1) `escalation` comment to project-lead posted via `board_add_comment`
 - updated case file and coverage matrix
 
 **On error:**
-- Cannot determine suspected_owner → CC both backend and frontend; ask reviewer to triage (`question`, not handoff).
+- Cannot determine suspected_owner → post a `question` comment to reviewer asking for triage (with `notify=["project-lead"]`); do not guess the owner.
 - Evidence capture failed (HAR corrupt, screenshot missing) → re-run repro; do NOT file with incomplete evidence.
 
 ---
@@ -169,21 +169,21 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 **Actions:**
 1. Run skill `verify-fix` (see `skills/verify-fix/SKILL.md`).
 2. `git pull --ff-only` `project/` to get the fix.
-3. Re-run the original repro from BUG-NN.md. If bug is gone — proceed. If it reproduces — capture new evidence, set bug status to `reopened`, send a `handoff` back to the fixer with the new evidence.
+3. Re-run the original repro from BUG-NN.md. If bug is gone — proceed. If it reproduces — capture new evidence, set bug status to `reopened`, post a `handoff` comment back to the fixer with the new evidence.
 4. Re-run the full Playwright suite for the originating Story (regression neighborhood).
 5. Add a permanent regression test: either promote the originating case (if it now catches the bug) to a `@regression` tag, or add a dedicated test in `project/qa-tests/regression/BUG-NN.spec.ts`.
 6. Update BUG-NN.md: `status: closed`, append a `Resolution` section linking the fix PR and the regression test.
 7. Update the case file and coverage matrix.
-8. Send a `handoff` to project-lead: "BUG-NN verified closed, regression added."
+8. Post a `handoff` comment to project-lead: "BUG-NN verified closed, regression added."
 9. If this was the last open S1/S2 bug for the Story AND all cases pass:
    a. Call `board_transition_ticket(ticket_id=<story-id>, agent="qa", to="done")`.
-   b. Send a final "Story qa-complete" handoff to project-lead with the coverage summary.
+   b. Post a final "Story qa-complete" `handoff` comment to project-lead with the coverage summary.
 
 **Output artifacts:**
 - Updated `docs/qa/bug-reports/BUG-NN.md`
 - New regression test in `project/qa-tests/`
 - Updated case file, coverage matrix
-- Handoff(s) in `outbox/`
+- Handoff `comment(s)` posted via `board_add_comment`
 
 **On error:**
 - Fix introduces a new bug → enter REPORT for the new bug, leave the original as `closed` only if the original symptom is gone.
@@ -193,12 +193,12 @@ States: `IDLE → INTAKE → DESIGN_CASES → AUTOMATE → EXPLORE → REPORT �
 
 ## 8. BLOCKED (side state)
 **Entry condition:** a `question` was sent and the answer hasn't returned, AND there is no other work I can pick up in the meantime.
-**Exit condition:** answer arrives in inbox.
+**Exit condition:** the answer arrives as an unread comment (`board_get_unread(agent="qa")`).
 
 **Actions:**
 1. Log block reason + question ID in `memory/state.md`.
 2. Pick up other Stories from `board_list_tickets(status="qa")` if any (parallel work is fine; mark which Story is blocked on what in the coverage matrix).
-3. On heartbeat, if block is >24h old, send a polite nudge to the question recipient with project-lead CC'd.
+3. On heartbeat, if block is >24h old, post a polite nudge `question` comment to the recipient with `notify=["project-lead"]`.
 
 **Output artifacts:** updated `memory/state.md`.
 **On error:** if blocked >72h, `escalation` to project-lead with severity `med`.

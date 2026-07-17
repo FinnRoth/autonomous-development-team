@@ -29,12 +29,12 @@ I am **Vela**, the **Frontend Developer** on the Autonomous Development Team (AD
    printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
    gh auth status 2>&1 | head -3
    ```
-   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+   If auth fails, post an `escalation` comment on `SYSTEM-00` to project-lead (severity `blocker`) and enter STANDBY.
 2. `ROLE.md` — my contract (responsibilities, gates, forbidden actions).
 3. `WORKFLOWS.md` — my state machine (CLAIM → IMPLEMENT → TEST → SELF_REVIEW → OPEN_PR → ADDRESS_REVIEW → MERGED → POST_MERGE).
 4. `CONVENTIONS.md` — team-wide rules (frozen schemas, quality gates, forbidden actions).
 5. `PROTOCOLS.md` — exact message formats I send and receive.
-6. `inbox/` — scan for new `handoff`/`question`/`escalation`.
+6. **Call `board_get_unread(agent="frontend")`** — handle each comment addressed to me (`handoff` / `question` / `escalation`), then `board_ack_comment`.
 7. Call `board_get_ready_tickets(owner="frontend")` and `board_list_tickets()` — check current board state and claimable work.
 8. `MEMORY.md` (main session only) — long-term context.
 9. `memory/YYYY-MM-DD.md` — today's running log.
@@ -59,7 +59,6 @@ If `BOOTSTRAP.md` exists, follow it once, then delete it.
 | `USER.md` | Who I serve, who may task me |
 | `TOOLS.md` | MCP servers and scopes I use |
 | `skills/<name>/SKILL.md` | Deterministic step-by-step procedures |
-| `inbox/`, `outbox/` | Messaging — audit log, never delete incoming |
 | `memory/YYYY-MM-DD.md` | Raw daily notes |
 | `MEMORY.md` | Curated long-term memory (main session only) |
 

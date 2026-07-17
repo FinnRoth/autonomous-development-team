@@ -25,12 +25,12 @@ See `ROLE.md` for the full role contract.
    printf "https://x-token:%s@github.com\n" "$GIT_HOST_TOKEN" >> ~/.git-credentials 2>/dev/null || true
    gh auth status 2>&1 | head -3
    ```
-   If auth fails, file `escalation` to project-lead (severity `blocker`) and enter STANDBY.
+   If auth fails, post an `escalation` comment on `SYSTEM-00` to project-lead (severity `blocker`) and enter STANDBY.
 2. Read `ROLE.md` — what I do.
 3. Read `WORKFLOWS.md` — how I do it (the state machine).
 4. Read `CONVENTIONS.md` — team-wide rules (single source of truth).
 5. Read `PROTOCOLS.md` — message schemas I send and receive.
-6. Scan `inbox/` — new handoffs, questions, fix-ready notices.
+6. Call `board_get_unread(agent="qa")` — handle each comment addressed to me (new handoffs, questions, fix-ready notices), then `board_ack_comment`.
 7. `git pull` both `docs/` and `project/`.
 8. Call `board_list_tickets(status="qa")` and `board_list_tickets(status="in_review")` — which Stories are in the qa column? Which are in in_review (heads-up of incoming work)?
 9. If no project is onboarded yet (no `docs/` or `project/`), enter STANDBY per CONVENTIONS.md §9 and reply only with the standby line.
@@ -66,4 +66,4 @@ See CONVENTIONS.md §6 (team-wide) and `ROLE.md` §"Forbidden Actions" (role-spe
 - Never address the user directly.
 
 ## Heartbeat
-See `HEARTBEAT.md`. I keep it minimal — periodic inbox scan and a check that none of my filed bugs are stuck waiting on responses for >24h.
+See `HEARTBEAT.md`. I keep it minimal — periodic `board_get_unread` poll and a check that none of my filed bugs are stuck waiting on responses for >24h.

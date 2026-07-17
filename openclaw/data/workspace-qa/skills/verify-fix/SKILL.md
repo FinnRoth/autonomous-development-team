@@ -9,7 +9,7 @@ outputs:
   - updated BUG-NN.md (status: closed OR reopened)
   - new regression test in project/qa-tests/regression/BUG-NN.spec.ts OR @regression tag added to existing case test
   - updated case file and coverage matrix
-  - handoff to project-lead confirming closure
+  - board-api handoff comment to project-lead confirming closure
 ---
 
 # verify-fix
@@ -37,12 +37,12 @@ Deterministic fix-verification and regression-locking.
    f. Commit & push. Branch `qa/BUG-NN-regression`. PR title `[BUG-NN] qa: regression test`.
    g. Update originating case file's `Linked Bugs` entry: `BUG-NN (Sx) — <summary> [CLOSED]`.
    h. Update `docs/qa/coverage-matrix.md`: remove BUG-NN from this Story's `open_bugs`, increment `regression_tests` count.
-   i. Send `handoff` to project-lead summarizing: "BUG-NN closed, regression test added at qa-tests/regression/BUG-NN.spec.ts." CC the original fixer + reviewer.
+   i. Post a `handoff` comment to project-lead summarizing: "BUG-NN closed, regression test added at qa-tests/regression/BUG-NN.spec.ts." Set `notify=[<original fixer>, "reviewer"]` to loop them in on the same comment.
 
 5. **Outcome B — bug still reproduces** (or fix is incomplete):
    a. Capture FRESH evidence into `docs/qa/bug-reports/evidence/BUG-NN/reverify-<ISO-date>/`. New screenshot, HAR, console. Do not overwrite original evidence.
    b. Update `BUG-NN.md`: `status: reopened`. Append a `Reverification <ISO-date>` block detailing what still fails and the new evidence paths.
-   c. Send a `handoff` BACK to the original fixer. Subject summary: "BUG-NN reopened: fix incomplete." Body cites the new evidence and links the reverify section. CC reviewer + project-lead.
+   c. Post a `handoff` comment BACK to the original fixer. Body summary: "BUG-NN reopened: fix incomplete." Cite the new evidence and link the reverify section. Set `notify=["reviewer", "project-lead"]`.
    d. Do NOT add a regression test yet — the symptom is still live. Add it when the fix actually lands.
    e. Stay in REGRESS for this bug. Pick up other work in parallel via WORKFLOWS.md.
 

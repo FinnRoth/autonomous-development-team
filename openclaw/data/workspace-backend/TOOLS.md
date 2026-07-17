@@ -4,7 +4,7 @@ This file declares the MCP servers and scopes I rely on. The servers themselves 
 
 ## 1. `filesystem` (workspace-backend)
 
-- **Scope:** `~/.openclaw/workspace-backend/` (full r/w, including `project/`, `docs/` read-mostly, `inbox/`, `outbox/`, `memory/`, `skills/`).
+- **Scope:** `~/.openclaw/workspace-backend/` (full r/w, including `docs/` read-mostly, `code/`, `memory/`, `misc/`, `skills/`).
 - **Read-only sub-scopes I respect by convention (not enforced):**
   - `docs/architecture/**` — owned by architect; I read only.
   - `docs/ui/**` — owned by uiux; I read only.
@@ -20,11 +20,11 @@ This file declares the MCP servers and scopes I rely on. The servers themselves 
 - **Operations I perform:** `clone`, `fetch`, `pull --ff-only`, `checkout -b`, `add`, `commit`, `push` to my own branch namespace `backend/<TICKET-ID>-<slug>`, open PRs via the host CLI (invoked through shell-exec), comment on PR threads.
 - **Forbidden:** push to `main`/`develop`/release branches, force-push to shared branches, delete branches I do not own, self-merge. See CONVENTIONS.md §6.
 
-## 3. `openclaw-messaging`
+## 3. Messaging — via `board-api` comments
 
-- **Purpose:** drop messages into `outbox/` and watch `inbox/` for `handoff` / `question` / `escalation` JSON files.
+- **Purpose:** all agent-to-agent messages. Post with `board_add_comment` (fields: `to`, `type` ∈ `handoff|question|escalation|info`, `notify`, `from_ticket`); read with `board_get_unread(agent="backend")`; clear with `board_ack_comment`.
 - **Schemas:** frozen — see CONVENTIONS.md §4. My role-specific examples live in `PROTOCOLS.md`.
-- **Archive policy:** processed inbox messages are moved to `inbox/archive/YYYY-MM-DD/`, never deleted.
+- A comment is delivered the instant board-api stores it (CONVENTIONS.md §12).
 
 ## 4. `context7`
 
@@ -38,7 +38,7 @@ This file declares the MCP servers and scopes I rely on. The servers themselves 
 
 ## 6. Database MCP — `wire when project chooses DB`
 
-When the architect publishes the persistence ADR, project-lead will wire a DB MCP (e.g., `postgres`, `sqlite`, `mongodb`) scoped to the project's dev DB. Until then, I run migrations through the project's CLI via shell exec and inspect schemas through the ORM's introspection commands. I MUST NOT invent a DB MCP; I MUST flag the absence in any ticket that requires direct DB inspection by filing a `question` to the architect.
+When the architect publishes the persistence ADR, project-lead will wire a DB MCP (e.g., `postgres`, `sqlite`, `mongodb`) scoped to the project's dev DB. Until then, I run migrations through the project's CLI via shell exec and inspect schemas through the ORM's introspection commands. I MUST NOT invent a DB MCP; I MUST flag the absence in any ticket that requires direct DB inspection by posting a `question` comment to the architect.
 
 ---
 
@@ -54,7 +54,9 @@ Task board API. Authoritative structured ticket store for ADT.
 - `board_get_ticket` — read full ticket details + comments
 - `board_list_tickets` — list tickets with status/owner/type filters
 - `board_transition_ticket` — transition ticket status
-- `board_add_comment` — add comment or question to ticket thread
+- `board_add_comment` — post a `handoff`/`question`/`escalation`/`info` comment (the messaging channel); set `to`, `notify`, `from_ticket`
+- `board_get_unread` — poll for comments addressed to me (heartbeat notification)
+- `board_ack_comment` — mark a comment read/handled
 - `board_get_board` — full board snapshot
 - `board_get_deps` — check dependency status
 

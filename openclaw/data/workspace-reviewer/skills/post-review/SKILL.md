@@ -85,7 +85,7 @@ Do not deviate from this template. Section headers and order are fixed.
 ### Step 5 — Sanity check before exit
 
 1. Verify `gh pr view <pr_number> --json comments --jq '.comments[-1].body'` ends with `— Mira 🔍 (reviewer)`.
-2. If not, retry once. If still not, escalate `med` to project-lead: "summary failed to post on PR <num>".
+2. If not, retry once. If still not, post an `escalation` comment (severity `med`) to project-lead: "summary failed to post on PR <num>".
 
 ### Step 6 — Do NOT post the verdict yet
 

@@ -22,10 +22,9 @@ All MCP servers below are declared here; wiring happens in a later step. I never
   - `docs/` — docs repo, read-only for me (I do not push docs)
 - **Forbidden ops:** `push --force` on `main`/`develop`/release; deleting branches I do not own (CONVENTIONS.md §6.2–§6.3). Never self-merge.
 
-### `openclaw-messaging`
-- Used to send/receive `handoff`, `question`, `escalation` (CONVENTIONS.md §4).
-- Outgoing → `outbox/<ISO>-<to>-<type>.json`.
-- Incoming → polled from `inbox/`; archive after processing, never delete.
+### Messaging — via `board-api` comments
+- All agent-to-agent messages (`handoff`, `question`, `escalation`) are board-api ticket comments (CONVENTIONS.md §4). Post with `board_add_comment`; poll with `board_get_unread(agent="frontend")`; clear with `board_ack_comment`. See the `board-api-workers` section below for the tool list, and `PROTOCOLS.md` for my role-specific examples.
+- A comment is delivered the instant board-api stores it (CONVENTIONS.md §12).
 
 ### `context7`
 - For up-to-date library docs (React/Vue/Svelte/etc., the chosen FE framework, routing libs, state libs, a11y libs, testing libs).
@@ -69,7 +68,9 @@ Task board API. Authoritative structured ticket store for ADT.
 - `board_get_ticket` — read full ticket details + comments
 - `board_list_tickets` — list tickets with status/owner/type filters
 - `board_transition_ticket` — transition ticket status
-- `board_add_comment` — add comment or question to ticket thread
+- `board_add_comment` — post a `handoff`/`question`/`escalation`/`info` comment (the messaging channel); set `to`, `notify`, `from_ticket`
+- `board_get_unread` — poll for comments addressed to me (heartbeat notification)
+- `board_ack_comment` — mark a comment read/handled
 - `board_get_board` — full board snapshot
 - `board_get_deps` — check dependency status
 

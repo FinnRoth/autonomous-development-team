@@ -10,7 +10,6 @@ The structure is designed for LLM retrieval: predictable paths, one concern per 
 
 ```
 <docs-repo-name>/
-├── handoff-log.md            ← append-only log of every agent-to-agent handoff (project-lead writes)
 ├── project/                  ← project-level metadata (project-lead owns)
 ├── requirements/             ← Q&A transcripts from user interrogation (project-lead owns)
 ├── architecture/             ← system design artefacts (architect owns)
@@ -19,7 +18,7 @@ The structure is designed for LLM retrieval: predictable paths, one concern per 
 └── qa/                       ← test plans, cases, bug reports (qa owns)
 ```
 
-`handoff-log.md` is at root because every agent reads it on wake. It must never be nested. Board state is accessed exclusively via board-api MCP tools, not from any markdown file.
+Agent-to-agent messages and the handoff history live in **board-api ticket comments**, not in the docs repo. There is no `handoff-log.md`. Board state and comment threads are accessed exclusively via board-api MCP tools (`board_get_ticket`, `board_get_unread`), not from any markdown file.
 
 ---
 
@@ -66,8 +65,9 @@ architecture/
 ├── data-model.md                       ← entities, relations, types, invariants; Mermaid ER diagram required
 ├── protocols.md                        ← auth, error envelope, pagination, idempotency, versioning
 ├── api/
-│   ├── openapi.yaml                    ← OpenAPI 3.1 single source of truth for REST/HTTP APIs
-│   └── events.md                       ← async/event contracts (queues, topics, webhooks); omit if not used
+│   └── <service>/                      ← one directory per API-exposing code repo; <service> = the repo name in project/repos.md
+│       ├── openapi.yaml                ← OpenAPI 3.1 single source of truth for this service's REST/HTTP API
+│       └── events.md                   ← async/event contracts (queues, topics, webhooks) for this service; omit if not used
 ├── adr/
 │   └── ADR-NNN-<slug>.md               ← one ADR per decision; NNN zero-padded to 3 digits
 └── feasibility/
@@ -77,6 +77,7 @@ architecture/
 Rules:
 - `overview.md` is a single Mermaid diagram plus one paragraph of prose. It must fit on one screen.
 - `folder-structure.md` uses an annotated tree format. Every directory gets a one-line comment explaining what lives there and who owns it. This is the file all other agents read to learn internal code repo paths — it must be kept current with every structural change.
+- **`api/<service>/openapi.yaml`** — one subdirectory per API-exposing service, named exactly after that service's code repo in `project/repos.md`. A monolith has a single `api/<the-one-repo>/` directory; a microservice project has one per service. Never a single top-level `api/openapi.yaml` — every spec lives under its `<service>/` directory so the path identifies which service it describes.
 - `data-model.md` always contains a Mermaid ER block. Prose describes invariants that diagrams cannot express.
 - ADR numbering is strictly sequential, never reused. Status is one of: `proposed`, `accepted`, `superseded`.
 - Feasibility reports are never edited after `status` is set to `approved` or `rejected`. Amendments are new reports.
@@ -159,6 +160,6 @@ This structure is optimised for agents that navigate by path inference:
 
 1. **Path = meaning.** An agent reading `architecture/adr/ADR-007-stripe.md` knows exactly what it contains without opening it.
 2. **Flat within directories.** Tickets, ADRs, case files are all one level deep in their directories. No `tickets/epics/` vs `tickets/stories/` split — the ID prefix (`EPIC-`, `STORY-`, etc.) is the discriminator.
-3. **One file, one concern.** `handoff-log.md` is only the handoff log. Files that mix concerns (e.g. a "status + notes" file) are forbidden.
-4. **Append-only where possible.** `handoff-log.md`, `review-log.md`, `decision-log.md`, `glossary.md` are append-only. This means an agent can always read the tail to get current state without re-reading the full file.
+3. **One file, one concern.** `review-log.md` is only the review log. Files that mix concerns (e.g. a "status + notes" file) are forbidden.
+4. **Append-only where possible.** `review-log.md`, `decision-log.md`, `glossary.md` are append-only. This means an agent can always read the tail to get current state without re-reading the full file.
 5. **Owner is encoded in the directory.** Every agent knows which directories it may write to by reading the owner annotations above. No agent writes outside its owned directories (CONVENTIONS.md §6.1).

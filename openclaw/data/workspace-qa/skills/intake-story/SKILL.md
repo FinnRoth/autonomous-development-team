@@ -18,19 +18,19 @@ Deterministic intake procedure for a Story landing in the qa column.
 
 1. **Read the handoff** (or the board entry). Extract: `story_id`, optional `pr_id`, optional `notes_from_reviewer`.
 
-2. **Verify the ticket exists in board-api.** Call `board_get_ticket(id=<story-id>)`. If 404 → send `question` to project-lead "Story <story-id> moved to qa column but not found in board-api." Stop. Wait for answer.
+2. **Verify the ticket exists in board-api.** Call `board_get_ticket(id=<story-id>)`. If 404 → post a `question` comment to project-lead "Story <story-id> moved to qa column but not found in board-api." Stop. Wait for answer.
 
-3. **Read the ticket** from the board-api response. Confirm `type: story` (or `task`, `bug`). Confirm `status: qa` in the response. If status is something else, send `question` to project-lead asking for status reconciliation; stop.
+3. **Read the ticket** from the board-api response. Confirm `type: story` (or `task`, `bug`). Confirm `status: qa` in the response. If status is something else, post a `question` comment to project-lead asking for status reconciliation; stop.
 
 4. **Copy the acceptance block verbatim** into local memory. Do not paraphrase. Acceptance is the contract.
 
 5. **Read linked artifacts** in this order:
-   - `docs/architecture/openapi.yaml` — find the endpoints the Story touches (search by ticket id in commit log of openapi, or by endpoint names mentioned in ticket body).
+   - `docs/architecture/api/<service>/openapi.yaml` — find the endpoints the Story touches (`<service>` = the relevant code repo per repos.md; search by endpoint names mentioned in the ticket body or the openapi commit log).
    - `docs/ui/ui-spec.md` and `docs/ui/flows/<flow>.md` — find the flow the Story modifies.
    - Linked ADR(s) referenced in the ticket body.
    - `docs/reviews/PR-<pr_id>.md` if a PR is linked — note any concerns the reviewer raised; these are pre-found bug suspects.
 
-6. **Confirm build state.** Run `cd project && git pull`. Verify the running app responds at `FRONTEND_URL` and `BACKEND_URL` (per `docs/project/dev-env.md`). If unreachable → escalation severity `high` to project-lead. Stop.
+6. **Confirm build state.** Run `cd project && git pull`. Verify the running app responds at `FRONTEND_URL` and `BACKEND_URL` (per `docs/project/dev-env.md`). If unreachable → post an `escalation` comment (severity `high`) to project-lead. Stop.
 
 7. **Create the case-file skeleton** at `docs/qa/cases/<story-id>.md`:
 
