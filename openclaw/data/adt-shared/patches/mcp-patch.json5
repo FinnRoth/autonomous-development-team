@@ -136,6 +136,17 @@
       // via its built-in shell-exec tool, authenticated by the GIT_HOST_TOKEN env var.
       // This keeps the team host-agnostic (GitHub, Gitea, Forgejo, GitLab) per CONVENTIONS.md §2.
 
+      // ─────────── fetch — generic HTTP for calling n8n webhooks ───────────
+      // Gives every agent an http_fetch tool to POST/GET n8n webhook URLs.
+      // Agents reach n8n at http://n8n:5678/webhook/<path> over adt-internal.
+      // N8N_BASE_URL env is set in docker-compose.yml for reference in prompts.
+      fetch: {
+        enabled: true,
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-fetch'],
+        codex: { agents: ['project-lead', 'architect', 'backend', 'frontend', 'uiux', 'reviewer', 'qa'] },
+      },
+
       // ─────────── board-api — task board (project-lead: full access) ───────────
       // MCP stdio bridge running inside the openclaw container.
       // The bridge script calls http://board-api:3000 over the adt-internal Docker network.

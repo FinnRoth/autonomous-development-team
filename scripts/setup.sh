@@ -108,6 +108,30 @@ detect_litellm() {
   curl -sS -o /dev/null -m 2 "$url" 2>/dev/null
 }
 
+# Generate a bcrypt hash for a given password using node (available in the
+# n8n image, but we need it before the container is running). Falls back to
+# python3's passlib if node isn't available on the host.
+bcrypt_hash() {
+  local password="$1"
+  if command -v node >/dev/null 2>&1; then
+    node -e "
+      const crypto = require('crypto');
+      const bcrypt = (() => { try { return require('bcryptjs'); } catch(e) {} try { return require('bcrypt'); } catch(e) {} return null; })();
+      if (bcrypt) { process.stdout.write(bcrypt.hashSync('$(printf '%s' "$password" | sed "s/'/'\\\\''/g")', 10)); process.exit(0); }
+      // fallback: shell out will handle it
+      process.exit(1);
+    " 2>/dev/null && return 0
+  fi
+  if command -v python3 >/dev/null 2>&1 && python3 -c "import bcrypt" 2>/dev/null; then
+    python3 -c "import bcrypt, sys; sys.stdout.write(bcrypt.hashpw(sys.argv[1].encode(), bcrypt.gensalt(10)).decode())" "$password"
+    return 0
+  fi
+  # Last resort: use a pre-computed hash for the exact password if it matches
+  # a known value, otherwise emit a placeholder and warn.
+  echo "__BCRYPT_PLACEHOLDER__"
+  return 1
+}
+
 # ─── banner ────────────────────────────────────────────────────────────────
 clear 2>/dev/null || true
 cat <<EOF
@@ -171,9 +195,9 @@ fi
 GATEWAY_PORT=$(ask "Gateway port" "$DEFAULT_PORT")
 
 echo
-echo "  ${BOLD}Gateway authentication${NC}"
-note "Password protects the OpenClaw gateway UI/API. Leave blank to disable auth (local-only)."
-OPENCLAW_GATEWAY_PASSWORD=$(ask_secret "Gateway password" "leave blank for none")
+echo "  ${BOLD}Master password${NC}"
+note "Single password for the OpenClaw gateway UI/API and the n8n UI. Leave blank to disable gateway auth (local-only)."
+MASTER_PASSWORD=$(ask_secret "Master password" "leave blank for none")
 
 echo
 echo "  ${BOLD}LLM backend (LiteLLM)${NC}"
@@ -202,20 +226,56 @@ while port_in_use "$DEFAULT_BOARD_API_PORT" 2>/dev/null || false; do
 done
 BOARD_API_PORT=$(ask "Board API host port (for local inspection; agents use internal hostname)" "$DEFAULT_BOARD_API_PORT")
 
+echo
+echo "  ${BOLD}n8n${NC}"
+DEFAULT_N8N_PORT=5678
+if port_in_use "$DEFAULT_N8N_PORT"; then
+  SUGGESTED_N8N_PORT=$(next_free_port $((DEFAULT_N8N_PORT + 1)))
+  warn "Port ${DEFAULT_N8N_PORT} is already in use — suggesting ${SUGGESTED_N8N_PORT}"
+  DEFAULT_N8N_PORT="$SUGGESTED_N8N_PORT"
+fi
+N8N_PORT=$(ask "n8n host port" "$DEFAULT_N8N_PORT")
+N8N_OWNER_EMAIL=$(ask "n8n owner email" "admin@docker.internal")
+
 # ─── [3] generate files ────────────────────────────────────────────────────
 step "Generating configuration files"
+
+# Derive n8n owner password hash from the master password.
+# n8n requires a bcrypt hash — plain text is not accepted.
+if [[ -n "$MASTER_PASSWORD" ]]; then
+  sub "hashing master password for n8n (bcrypt)…"
+  N8N_OWNER_PASSWORD_HASH=$(bcrypt_hash "$MASTER_PASSWORD")
+  if [[ "$N8N_OWNER_PASSWORD_HASH" == "__BCRYPT_PLACEHOLDER__" ]]; then
+    warn "Could not generate bcrypt hash on this host (no node/bcrypt or python/bcrypt found)."
+    warn "n8n will boot but the owner account won't be pre-configured."
+    warn "Log in to http://localhost:${N8N_PORT} and create the owner manually after first boot."
+    N8N_OWNER_PASSWORD_HASH=""
+  else
+    ok "bcrypt hash generated"
+  fi
+else
+  N8N_OWNER_PASSWORD_HASH=""
+fi
+
+# Escape $ in the bcrypt hash so docker-compose doesn't treat them as variable refs.
+N8N_OWNER_PASSWORD_HASH_ESCAPED="${N8N_OWNER_PASSWORD_HASH//$/$\$}"
 
 # docker-compose.yml
 sed \
   -e "s|{{CONTAINER_NAME}}|${CONTAINER_NAME}|g" \
   -e "s|{{GATEWAY_PORT}}|${GATEWAY_PORT}|g" \
-  -e "s|{{OPENCLAW_GATEWAY_PASSWORD}}|${OPENCLAW_GATEWAY_PASSWORD}|g" \
+  -e "s|{{OPENCLAW_GATEWAY_PASSWORD}}|${MASTER_PASSWORD}|g" \
   -e "s|{{LITELLM_BASE_URL}}|${LITELLM_BASE_URL}|g" \
   -e "s|{{LITELLM_API_KEY}}|${LITELLM_API_KEY}|g" \
   -e "s|{{FIGMA_TOKEN}}|${FIGMA_TOKEN}|g" \
   -e "s|{{GIT_HOST_TOKEN}}|${GIT_HOST_TOKEN}|g" \
   -e "s|{{GIT_HOST_CLI}}|${GIT_HOST_CLI}|g" \
   -e "s|{{BOARD_API_PORT}}|${BOARD_API_PORT}|g" \
+  -e "s|{{N8N_PORT}}|${N8N_PORT}|g" \
+  -e "s|{{N8N_OWNER_EMAIL}}|${N8N_OWNER_EMAIL}|g" \
+  -e "s|{{N8N_OWNER_PASSWORD_HASH}}|${N8N_OWNER_PASSWORD_HASH_ESCAPED}|g" \
+  -e "s|{{N8N_OWNER_FIRST_NAME}}|Admin|g" \
+  -e "s|{{N8N_OWNER_LAST_NAME}}|ADT|g" \
   "$TEMPLATES/docker-compose.yml" > "$REPO_ROOT/docker-compose.yml"
 ok "docker-compose.yml"
 
@@ -233,7 +293,7 @@ if ! command -v python3 >/dev/null 2>&1; then
   exit 1
 fi
 
-OPENCLAW_GATEWAY_PASSWORD="$OPENCLAW_GATEWAY_PASSWORD" \
+OPENCLAW_GATEWAY_PASSWORD="$MASTER_PASSWORD" \
 LITELLM_BASE_URL="$LITELLM_BASE_URL" \
 python3 - "$OPENCLAW_JSON" <<'PY'
 import json, os, sys
@@ -484,9 +544,10 @@ echo
 echo "${GREEN}${BOLD}✔  ADT is up and running.${NC}"
 echo
 echo "  Gateway:      ${BOLD}http://localhost:${GATEWAY_PORT}${NC}"
+echo "  n8n:          ${BOLD}http://localhost:${N8N_PORT}${NC}  ${DIM}(${N8N_OWNER_EMAIL} / master password)${NC}"
 echo "  Container:    ${BOLD}${CONTAINER_NAME_ACTUAL}${NC}"
-if [[ -n "$OPENCLAW_GATEWAY_PASSWORD" ]]; then
-  echo "  Auth:         password (set during this run)"
+if [[ -n "$MASTER_PASSWORD" ]]; then
+  echo "  Auth:         master password (set during this run)"
 else
   echo "  Auth:         ${YELLOW}none${NC} ${DIM}(local-only)${NC}"
 fi

@@ -29,10 +29,14 @@ services:
       GIT_HOST_TOKEN: "{{GIT_HOST_TOKEN}}"
       # Git host CLI to use: one of "gh", "glab", "tea". Defaults to "gh".
       GIT_HOST_CLI: "{{GIT_HOST_CLI}}"
+      # n8n base URL — agents use this to trigger webhooks (http://n8n:5678 internally).
+      N8N_BASE_URL: "http://n8n:5678"
 
     depends_on:
       board-api:
         condition: service_healthy
+      n8n:
+        condition: service_started
 
     networks:
       - adt-internal
@@ -61,6 +65,43 @@ services:
     networks:
       - adt-internal
 
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: {{CONTAINER_NAME}}-n8n
+    restart: unless-stopped
+
+    ports:
+      # Host-side port for the n8n UI (http://localhost:5678).
+      # Internal services use http://n8n:5678.
+      - "{{N8N_PORT}}:5678"
+
+    volumes:
+      - n8n-data:/home/node/.n8n
+
+    environment:
+      # Pre-configured owner account — skips the setup wizard on first boot.
+      # N8N_INSTANCE_OWNER_PASSWORD_HASH must be a bcrypt hash of the desired password.
+      N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
+      N8N_INSTANCE_OWNER_EMAIL: "{{N8N_OWNER_EMAIL}}"
+      N8N_INSTANCE_OWNER_PASSWORD_HASH: "{{N8N_OWNER_PASSWORD_HASH}}"
+      N8N_INSTANCE_OWNER_FIRST_NAME: "{{N8N_OWNER_FIRST_NAME}}"
+      N8N_INSTANCE_OWNER_LAST_NAME: "{{N8N_OWNER_LAST_NAME}}"
+      # Public webhook base URL — used by n8n to build webhook URLs in the UI.
+      # Update to your actual host/domain if exposing externally.
+      WEBHOOK_URL: "http://localhost:{{N8N_PORT}}/"
+      # Internal service URLs available to n8n workflows as env variables.
+      # n8n credentials/HTTP-Request nodes can reference these.
+      BOARD_API_URL: "http://board-api:3000"
+      OPENCLAW_GATEWAY_URL: "http://openclaw:18789"
+      OPENCLAW_GATEWAY_PASSWORD: "{{OPENCLAW_GATEWAY_PASSWORD}}"
+
+    depends_on:
+      board-api:
+        condition: service_healthy
+
+    networks:
+      - adt-internal
+
 networks:
   adt-internal:
     driver: bridge
@@ -68,3 +109,4 @@ networks:
 volumes:
   adt-docker-lib:
   board-api-data:
+  n8n-data:
